@@ -26,16 +26,22 @@ namespace Celsius
         // Now, it's not like we have dozens of maps. usually just one or three.
         // Might make sense to not look it up in a dict every time.
         //
-        public static TemperatureInfo TemperatureInfo(this Map map) { // NB: not nullable.
-            TemperatureInfo tinfo = null;
+        public static bool TryGetTemprComp(this Map map, out TemperatureInfo tinfo) {
+            if (map == null) {
+                // this happens f.ex. on mapgen when the generator replaces mineable walls
+                // with ore and whatnot.
+                tinfo = null;
+                return false;
+            }
             if (!temperatureInfos.TryGetValue(map, out tinfo)) {
                 tinfo = map.GetComponent<TemperatureInfo>();
+                if (tinfo == null) { // Crash early. This should not ever happen.
+                    throw new InvalidOperationException($"TemperatureInfo-for-map MapComponent null on set for a map");
+                }
+                LC.Info("TemperatureUtility.TryGetTemprComp()", $"Caching tinfo lookup for {map}");
                 temperatureInfos.Add(map, tinfo);
             }
-            if (tinfo == null) { // crash early.
-                throw new InvalidOperationException("TemperatureInfo MapComponent null for a map");
-            }
-            return tinfo;
+            return true;
         }
 
         public static void MeltIceNine() {
@@ -48,11 +54,11 @@ namespace Celsius
             var log = new LogContext("SettingsChanged");
 
             if (fromSetup) {
-                log.Error("fromSetup");
+                log.Info("fromSetup");
             } else if (afterSettingsReset) {
-                log.Error("afterSettingsReset");
+                log.Info("afterSettingsReset");
             } else if (afterSettingsLoad) {
-                log.Error("afterSettingsLoad");
+                log.Info("afterSettingsLoad");
             } else {
                 log.Info("Mod settings have changed. Updating data.");
             }
@@ -81,26 +87,33 @@ namespace Celsius
 
 #region mapaccess
         public static bool TryPushHeat(IntVec3 cell, Map map, float energy) {
-            TemperatureInfo temperatureInfo = map.TemperatureInfo();
-            int index = map.cellIndices.CellToIndex(cell);
-            if (!temperatureInfo.InBounds(index)) {
-                var log = new LogContext("TryPushHeat");
-                log.Error($"TemperatureInfo for {map} unavailable or cell {cell} is outside map boundaries!");
+            if (!cell.InBounds(map)) {
                 return false;
             }
-            temperatureInfo.PushHeat(index, energy);
-            return true;
+            if (map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                tinfo.PushHeat(cell, energy);
+                return true;
+            }
+            LC.Error("TryPushHeat()", $"no tinfo for '{map}'");
+            return false;
         }
 
         public static float GetTemperatureForCell(this IntVec3 cell, Map map) {
-            return map.TemperatureInfo().GetTemperatureForCell(cell);
+            if (map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                tinfo.GetTemperatureForCell(cell);
+            }
+            return map.mapTemperature.OutdoorTemp;
         }
 
         public static float GetSurroundingTemperature(this IntVec3 cell, Map map)
         {
-            TemperatureInfo tempInfo = map.TemperatureInfo();
-            if (!cell.InBounds(map))
+            if (!cell.InBounds(map)) {
                 return map.mapTemperature.OutdoorTemp;
+            }
+            TemperatureInfo tinfo;
+            if (!map.TryGetTemprComp(out tinfo)) {
+                return map.mapTemperature.OutdoorTemp;
+            }
             float sum = cell.GetTemperatureForCell(map);
             foreach (IntVec3 c in GenAdjFast.AdjacentCellsCardinal(cell))
                 sum += c.InBounds(map) ? c.GetTemperatureForCell(map) : cell.GetTemperatureForCell(map);
@@ -118,7 +131,11 @@ namespace Celsius
             if (room.TouchesMapEdge) {
                 return room.Map.mapTemperature.OutdoorTemp;
             }
-            return room.Map.TemperatureInfo().GetRoomAverageTemperature(room);
+            TemperatureInfo tinfo;
+            if (!room.Map.TryGetTemprComp(out tinfo)) {
+                return room.Map.mapTemperature.OutdoorTemp;
+            }
+            return tinfo.GetRoomAverageTemperature(room);
         }
 #endregion mapaccess
         #region DIFFUSION

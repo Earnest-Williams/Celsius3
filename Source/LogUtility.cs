@@ -47,4 +47,22 @@
         public void Error(string msg) { Verse.Log.Error(_ctx + " " + msg); }
         public void ErrOnce(int key, string msg) { Verse.Log.ErrorOnce(_ctx + " " + msg, key); }
     }
+
+    static class LC {
+        public static LogContext Info(string ctx, string msg) {
+            var log = new LogContext(ctx);
+            log.Info(msg);
+            return log;
+        }
+        public static LogContext Error(string ctx, string msg) {
+            var log = new LogContext(ctx);
+            log.Error(msg);
+            return log;
+        }
+        public static LogContext Warn(string ctx, string msg) {
+            var log = new LogContext(ctx);
+            log.Warn(msg);
+            return log;
+        }
+    }
 }

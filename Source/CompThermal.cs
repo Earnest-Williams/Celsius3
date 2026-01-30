@@ -70,15 +70,6 @@ namespace Celsius
                 tstate.UpdateDamage(building.HitPoints, building.MaxHitPoints);
             }
         }
-        // since we receive flicks directly, we must ping TemperatureInfo to update the cache
-        // now how to get at the TemperatureInfo object for the map we're in?
-        void Notify_FlickHappened() {
-            if (this.parent is Building) { // do flickable non-buildings make any sense at all?
-                Building building = (Building) this.parent;
-                var tinfo = building.Map.TemperatureInfo(); // hate this backwards syntax sugar
-                tinfo.Notify_BuildingFlicked(building);
-            }
-        }
 
 /*  this one is called by
         ThingWithComps::BroadcastCompSignal()
@@ -88,6 +79,7 @@ namespace Celsius
         SignalManager::SendSignal() for registered receivers of ISignalReceiver iface
           Thing registers itself if (this.def.receivesSignals)
 
+    since we receive flicks directly, we must ping TemperatureInfo to update the cache
 */
 
         public override void ReceiveCompSignal(string signal)
@@ -96,12 +88,10 @@ namespace Celsius
                 switch (signal.ToLowerInvariant()) {
                     case "flickedon":
                         tstate.UpdateFlicks(ThingOpenState.Open);
-                        Notify_FlickHappened();
-                        return;
+                        break;
                     case "flickedoff":
                         tstate.UpdateFlicks(ThingOpenState.Closed);
-                        Notify_FlickHappened();
-                        return;
+                        break;
                     default:
                         return;
                 }
@@ -112,18 +102,22 @@ namespace Celsius
                     case "airon":
                     case "bothon":
                         tstate.UpdateFlicks(ThingOpenState.Open);
-                        Notify_FlickHappened();
-                        return;
+                        break;
                     case "airoff":
                     case "bothoff":
                         tstate.UpdateFlicks(ThingOpenState.Closed);
-                        Notify_FlickHappened();
-                        return;
+                        break;
                     default:
                         return;
                 }
             else return;
 
+            if (this.parent is Building) { // do flickable non-buildings make any sense at all?
+                Building building = (Building) this.parent;
+                if (building.Map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                    tinfo.Notify_BuildingFlicked(building);
+                }
+            }
         }
     }
 }

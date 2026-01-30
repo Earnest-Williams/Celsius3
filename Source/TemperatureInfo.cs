@@ -243,17 +243,15 @@ namespace Celsius
                     if (snowDepth > 0.0001f && !cell.Roofed(map)) {
                         map.steadyEnvironmentEffects.AddFallenSnowAt(cell, snowDepth);
                     }
-                    // FIXME: don't dump this every time
-                    log.Info($" cell-with-tertemp [{cell.x},{cell.z}] terr={terrain} t={map.mapTemperature.OutdoorTemp}");
                 } else {
                     terrainTemperatures[i] = float.NaN;
                 }
             }
-            log.Info($"{cellsWithTerrainTemperature}/{NumGridCells} track terrain temperature.");
+            log.Info($"{cellsWithTerrainTemperature}/{NumGridCells} cells track terrain temperature.");
 
             CollectTerrainEffects(); // melt/freeze. melt snow for one tick.
 
-            log.Info($"Applying {terrainFlops.Count} terrain flops, {snowsMelted.Count} snowmelts and {firesStarted.Count} autoignitions.");
+            log.Info($"{terrainFlops.Count} terrain flops, {snowsMelted.Count} snowmelts and {firesStarted.Count} autoignitions.");
 
             // delayed  until the first tick since melts can destroy stuff and who knows
             // what state is that stuff in at this moment.

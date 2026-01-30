@@ -146,10 +146,14 @@ namespace Celsius
         }
 
         // Replaces Room.Temperature with room's average temperature (e.g. for displaying in the bottom right corner)
+        // FIXME  Am not understanding this.
         public static bool Room_Temperature_get(ref float __result, Room __instance)
         {
-            if (__instance?.Map?.TemperatureInfo() == null)
+            // if (__instance?.Map?.TemperatureInfo() == null)
+            //    return true;
+            if (!__instance.Map.TryGetTemprComp(out TemperatureInfo tinfo)) {
                 return true;
+            }
             __result = __instance.GetTemperature();
             return false;
         }
@@ -160,22 +164,20 @@ namespace Celsius
         // Replaces GenTemperature.PushHeat(Thing, float) to push heat evenly from big things (e.g. geysers)
         public static bool GenTemperature_PushHeat_Thing(Thing t, float energy)
         {
-            TemperatureInfo temperatureInfo = t.MapHeld?.TemperatureInfo();
-            if (temperatureInfo == null)
-            {
-                LogUtility.Log($"TemperatureInfo unavailable for map {t.MapHeld} where {t} is held!", LogLevel.Warning);
+            if (!t.MapHeld.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                LC.Warn("GenTemperature_PushHeat_Thing", $"no tinfo for map {t.MapHeld} where {t} is held.");
                 return true;
             }
             if (t.def.Size == IntVec2.One)
             {
-                temperatureInfo.PushHeat(t.PositionHeld, energy);
+                tinfo.PushHeat(t.PositionHeld, energy);
                 return false;
             }
             CellRect cells = t.OccupiedRect();
             energy /= t.def.Size.Area;
             for (int x = cells.minX; x <= cells.maxX; x++)
                 for (int z = cells.minZ; z <= cells.maxZ; z++)
-                    temperatureInfo.PushHeat(new IntVec3(x, 0, z), energy);
+                    tinfo.PushHeat(new IntVec3(x, 0, z), energy);
             return false;
         }
 
@@ -205,9 +207,8 @@ namespace Celsius
         // Attaches to AttachableThing.Destroy to reduce temperature to just below the ignition temperature, when a Fire is destroyed
         public static void AttachableThing_Destroy(AttachableThing __instance) {
             if (Settings.AutoignitionEnabled && __instance is Fire) {
-                TemperatureInfo temperatureInfo = __instance.Map?.TemperatureInfo();
-                if (temperatureInfo != null) {
-                    temperatureInfo.Notify_FireSnuffedOut(__instance.Position);
+                if (__instance.Map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                    tinfo.Notify_FireSnuffedOut(__instance.Position);
                 }
             }
         }
@@ -257,14 +258,19 @@ namespace Celsius
         public static bool GlobalControls_TemperatureString(ref string __result)
         {
             Map map = Find.CurrentMap;
-            if (map == null)
-                return true;
-            int index = map.cellIndices.CellToIndex(UI.MouseCell());
-            TemperatureInfo temperatureInfo = map.TemperatureInfo();
-            if (temperatureInfo == null || !temperatureInfo.InBounds(index) || map.fogGrid.IsFogged(index))
-                return true;
-            __result = temperatureInfo.GetTemperatureForCell(index).ToStringTemperature(Settings.TemperatureDisplayFormatString);
-            float terrainTemperature = temperatureInfo.GetTerrainTemperature(index);
+            if (map == null) { return true; }
+
+            var mcell = UI.MouseCell();
+            if (!mcell.InBounds(map)) { return true; }
+
+            int index = map.cellIndices.CellToIndex(mcell);
+            if (map.fogGrid.IsFogged(index)) { return true; }
+
+            if (!map.TryGetTemprComp(out TemperatureInfo tinfo)) { return true; }
+
+            __result = tinfo.GetTemperatureForCell(index).ToStringTemperature(Settings.TemperatureDisplayFormatString);
+
+            float terrainTemperature = tinfo.GetTerrainTemperature(index);
             if (!float.IsNaN(terrainTemperature))
                 // Localization Key: Celsius_Terrain - Terrain
                 __result += $" / {"Celsius_Terrain".Translate()} {terrainTemperature.ToStringTemperature(Settings.TemperatureDisplayFormatString)}";
@@ -274,15 +280,15 @@ namespace Celsius
         // When door is opening, update its state and thermal values
         public static void Building_Door_DoorOpen(Building_Door __instance)
         {
-            var tinfo = __instance.Map.TemperatureInfo(); // hate this backwards syntax sugar
-            tinfo.Notify_DoorOpened(__instance);
+            if (__instance.Map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                tinfo.Notify_DoorOpened(__instance);
+            }
         }
 
         // When door is closing, update its state and thermal values
         public static void Building_Door_DoorTryClose(Building_Door __instance, bool __result)
         {
-            if (__result) {
-                var tinfo = __instance.Map.TemperatureInfo(); // hate this backwards syntax sugar
+            if (__instance.Map.TryGetTemprComp(out TemperatureInfo tinfo)) {
                 tinfo.Notify_DoorClosed(__instance);
             }
         }
@@ -306,11 +312,15 @@ namespace Celsius
         //      void RemoveTempTerrain(IntVec3 c, bool doLeavings = false, bool preventDestroyEffects = false)
 
         public static void TerrainGrid_SetTerrain(TerrainGrid __instance, IntVec3 c) {
-            __instance.map.TemperatureInfo().Notify_TerrainChanged(c);
+            if (__instance.map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                tinfo.Notify_TerrainChanged(c);
+            }
         }
 
         public static void TerrainGrid_RemoveGravshipTerrainUnsafe(TerrainGrid __instance, IntVec3 cell) {
-            __instance.map.TemperatureInfo().Notify_TerrainChanged(cell);
+            if (__instance.map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                tinfo.Notify_TerrainChanged(cell);
+            }
         }
 
         // Building spawn/despawn
@@ -340,11 +350,15 @@ namespace Celsius
 
         public static void Building_SpawnSetup(Building __instance, Map map, bool respawningAfterLoad) {
             if (!respawningAfterLoad) {
-                map.TemperatureInfo().Notify_BuildingSpawned(__instance);
+                if (map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                    tinfo.Notify_BuildingSpawned(__instance);
+                }
             }
         }
         public static void Building_DeSpawn(Building __instance) {
-            __instance.Map.TemperatureInfo().Notify_BuildingDespawned(__instance);
+            if (__instance.Map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                tinfo.Notify_BuildingDespawned(__instance);
+            }
         }
 
         // Adds heat push to ritual fires
