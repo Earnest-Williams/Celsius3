@@ -211,6 +211,32 @@ namespace Celsius
             initialized = true;
         }
 
+        // TODO: I'm not sure what this is supposed to return.
+        // since snowGrid.TotalDepth surely isn't to be divided
+        // by the number  of grid cells
+        static float GetAverageSnowDepth(Map map) {
+            float snowDepth = map.snowGrid.TotalDepth;
+            if (snowDepth <= 0)
+                return 0;
+            int possibleSnowCells = 0;
+            for (int i = 0; i < map.Size.x * map.Size.z; i++)
+            {
+                TerrainDef terrain = map.terrainGrid.TerrainAt(i);
+                if (terrain != null && !terrain.holdSnowOrSand)
+                    continue;
+                Building building = map.edificeGrid[i];
+                if (building != null && !SnowGrid.CanCoexistWithSnow(building.def))
+                    continue;
+                if (map.roofGrid.Roofed(i))
+                    continue;
+                possibleSnowCells++;
+            }
+            if (possibleSnowCells == 0)
+                return 0;
+            snowDepth /= possibleSnowCells;
+            return snowDepth;
+        }
+
         void InitializeTemperatures() {
             var log = new LogContext("InitializeTemperatures");
 
@@ -230,7 +256,7 @@ namespace Celsius
                 }
             }
 
-            float snowDepth = map.GetAverageSnowDepth();
+            float snowDepth = GetAverageSnowDepth(map);
             if (snowDepth > 0) {
                 log.Info("$Covering frozen terrain with average snow level of {snowDepth:F4}.");
             }
@@ -926,6 +952,7 @@ namespace Celsius
             this.modelMsecEma.update(stopWatch.ElapsedMilliseconds);
             this.modelDone = true;
         }
+
         // Based on vanilla formula: 0.0058 * T * [T / 10] for 0.06% of cells every tick
         static float SnowChangeAmountAt(float temperature) => -0.00058f * 0.0006f * temperature * Mathf.Clamp(temperature, 0, 10);
         // Converts temperature field into stuff happening. Also threadpooled.

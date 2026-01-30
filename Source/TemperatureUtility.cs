@@ -127,8 +127,10 @@ namespace Celsius
         }
 #endregion mapaccess
         #region DIFFUSION
+        public static float RoundWithPrecision(this float value, float precision = 1) => Mathf.Round(value / precision) * precision;
 
-        static bool AlmostZero(float az) { return Mathf.Abs(az) < float.Epsilon; }
+        public static bool AlmostZero(this float az) { return Mathf.Abs(az) < float.Epsilon; }
+
         public static void CalculateHeatTransferCells(float interactingTemperature, ThermalProps props, float airflow,
                                                       float modelStepFactor, ref float energy, ref float heatFlow)
         {
@@ -144,7 +146,7 @@ namespace Celsius
             }
 
             // If one of the interacting cells is not air, need to take airflow into account
-            float hf = AlmostZero(airflow) || AlmostZero(props.airflow)
+            float hf = airflow.AlmostZero() || props.airflow.AlmostZero()
                 ? props.HeatFlow
                 : props.HeatFlow * Mathf.Pow(Settings.ConvectionConductivityEffect, airflow * props.airflow);
 
