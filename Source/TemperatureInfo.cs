@@ -446,6 +446,24 @@ namespace Celsius
             return map.Biome == BiomeDefOf.SeaIce ? TerrainDefOf.WaterOceanDeep : TerrainDefOf.WaterDeep;
         }
 
+        // remove all Ice9 from the map so that the mod can be removed.
+        public void MeltIceNine() {
+            var log = new LogContext($"MeltIceNine({map})");
+
+            foreach (var kv in terrainFlops) {
+                var index = kv.Key;
+                var tdef = kv.Value;
+
+                if (map.terrainGrid.topGrid[index] == CelsiusIceNine) {
+                    log.Error($"cell {index} in tflops, but top terrain is {map.terrainGrid.topGrid[index]}, not IceNine");
+                    continue;
+                }
+                map.terrainGrid.topGrid[index] = kv.Value;
+            }
+            terrainFlops.Clear();
+            log.Info($"IceNine removed from the map.");
+        }
+
         void ConvertIceToIceNine() {
             var log = new LogContext($"ConvertIceToIceNine({map})");
             if (map.Biome == BiomeDefOf.SeaIce || map.Biome == BiomeDefOf.IceSheet) {
@@ -518,7 +536,6 @@ namespace Celsius
         }
 
         const int MaxSupportedDataFormatRevisionOrHangMyLaundryOnThemToDry = 1;
-
         void SaveData() {
             string modVersion = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
             string dataVersion = MaxSupportedDataFormatRevisionOrHangMyLaundryOnThemToDry.ToString();

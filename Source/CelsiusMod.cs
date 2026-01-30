@@ -111,6 +111,10 @@ namespace Celsius
             if (content.ButtonText("Celsius_Settings_ResetDefault".Translate()))
                 Reset();
 
+            if (content.ButtonText("Celsius_Settings_MeltIceNine".Translate())) {
+                TemperatureUtility.MeltIceNine();
+            }
+
             viewRect.height = content.MaxColumnHeightSeen + 40;
             content.End();
             Widgets.EndScrollView();

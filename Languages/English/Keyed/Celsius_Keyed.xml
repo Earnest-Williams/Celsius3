@@ -57,6 +57,7 @@
 	<Celsius_Settings_PressureExponent_tooltip>Default: {0}</Celsius_Settings_PressureExponent_tooltip>
 	<Celsius_Settings_T_Saturation>Saturation: {0}</Celsius_Settings_T_Saturation>
 	<Celsius_Settings_ResetColors>Reset colortemps</Celsius_Settings_ResetColors>
+    <Celsius_Settings_MeltIceNine>Prepare for mod removal (save game after pressing this button)</Celsius_Settings_MeltIceNine>
 
 	<Celsius_MapTempOverlay_Cell>Cell: {0}</Celsius_MapTempOverlay_Cell>
 	<Celsius_MapTempOverlay_Terrain>Terrain: {0}</Celsius_MapTempOverlay_Terrain>

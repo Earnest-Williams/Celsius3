@@ -38,6 +38,12 @@ namespace Celsius
             return tinfo;
         }
 
+        public static void MeltIceNine() {
+            foreach (TemperatureInfo temperatureInfo in temperatureInfos.Values) {
+                temperatureInfo.MeltIceNine();
+            }
+        }
+
         public static void SettingsChanged(bool afterSettingsLoad = false, bool fromSetup = false, bool afterSettingsReset = false) {
             var log = new LogContext("SettingsChanged");
 
@@ -73,6 +79,7 @@ namespace Celsius
             }
         }
 
+#region mapaccess
         public static bool TryPushHeat(IntVec3 cell, Map map, float energy) {
             TemperatureInfo temperatureInfo = map.TemperatureInfo();
             int index = map.cellIndices.CellToIndex(cell);
@@ -113,7 +120,7 @@ namespace Celsius
             }
             return room.Map.TemperatureInfo().GetRoomAverageTemperature(room);
         }
-
+#endregion mapaccess
         #region DIFFUSION
 
         static bool AlmostZero(float az) { return Mathf.Abs(az) < float.Epsilon; }

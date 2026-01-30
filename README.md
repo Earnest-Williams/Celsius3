@@ -21,8 +21,8 @@ Since the model now can run at least eight times per tick (compared to 120 ticks
 some model parameters need tuning. I tried to keep the model as intact as possible, but there were some bugs
 in its implementation too, so it might behave strangely. Please report anything untoward.
 
-I would not recommend using this update on important saves/playthroughs - while it should not eat your save,
-the 2.6 version would not be able to load the save from this version.
+I would not recommend using this update on important saves/playthroughs - while it should not eat your save
+(there is a button for this in mod settings), the 2.6 version would not be able to load the save from this version.
 
 Please help with testing, bugreports and suggestions are very welcome.
 
