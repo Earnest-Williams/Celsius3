@@ -33,8 +33,6 @@ namespace Celsius
         public static float T_MaxMapped;
         public static float T_Saturation;
 
-        public static bool Spam = Prefs.LogVerbose;
-
         public const int TicksPerUpdate_Default = 120;
         public const float ConductivityPowerBase_Default = 0.5f;
         public const float ConvectionConductivityEffect_Default = 10;
@@ -83,7 +81,8 @@ namespace Celsius
 
             if (Scribe.mode == LoadSaveMode.LoadingVars) {
                 RecalculateValues();
-                TemperatureUtility.SettingsChanged(afterSettingsLoad: true);
+                LC.Spam("Settings", "Settings loaded.");
+                TemperatureUtility.SettingsChanged();
             }
         }
 
@@ -98,8 +97,6 @@ namespace Celsius
 
         public static void Reset(bool notifyTU = false)
         {
-            log.Spam("Settings reset.");
-
             UseVanillaTemperatureColors = false;
             ShowTemperatureTooltip = true;
             FreezingAndMeltingEnabled = true;
@@ -120,9 +117,9 @@ namespace Celsius
             RecalculateValues();
 
             if (notifyTU) {
-                TemperatureUtility.SettingsChanged(afterSettingsReset: true);
+                TemperatureUtility.SettingsChanged();
             }
-
+            LC.Spam("Settings", "Settings reset.");
             Dump();
         }
 

@@ -34,8 +34,7 @@ namespace Celsius
                 if ((ttpList = def.modExtensions.OfType<ThingThermalProperties>().ToList()).Count > 1)
                     log.Warn($"{def.defName} has {ttpList.Count} ThingThermalProperties extensions:\n{ttpList.Select(ttp => ttp.ToString()).ToLineList("- ")}");
             }
-            TemperatureUtility.SettingsChanged(fromSetup: true);
-
+            TemperatureUtility.SettingsChanged();
             log.Info($"Celsius {ver}");
         }
 
@@ -149,8 +148,6 @@ namespace Celsius
         // FIXME  Am not understanding this.
         public static bool Room_Temperature_get(ref float __result, Room __instance)
         {
-            // if (__instance?.Map?.TemperatureInfo() == null)
-            //    return true;
             if (!__instance.Map.TryGetTemprComp(out TemperatureInfo tinfo)) {
                 return true;
             }
@@ -216,7 +213,9 @@ namespace Celsius
         // Replaces JobGiver_SeekSafeTemperature.ClosestRegionWithinTemperatureRange to only seek regions with no dangerous cells
         public static bool JobGiver_SeekSafeTemperature_ClosestRegionWithinTemperatureRange(ref Region __result, JobGiver_SeekSafeTemperature __instance, IntVec3 root, Map map, FloatRange tempRange, TraverseParms traverseParms)
         {
-            LogUtility.Log($"JobGiver_SeekSafeTemperature_ClosestRegionWithinTemperatureRange for {root.GetFirstPawn(map)} at {root} (t = {root.GetTemperatureForCell(map):F1}C)");
+            var log = LC.Info("JobGiver_SeekSafeTemperature_ClosestRegionWithinTemperatureRange",
+                         $"for {root.GetFirstPawn(map)} at {root} (t = {root.GetTemperatureForCell(map):F1}C)");
+
             Region region = root.GetRegion(map, RegionType.Set_Passable);
             if (region == null)
                 return false;
@@ -233,9 +232,11 @@ namespace Celsius
                 return false;
             };
             RegionTraverser.BreadthFirstTraverse(region, (Region from, Region r) => r.Allows(traverseParms, false), regionProcessor);
-            if (foundReg != null)
-                LogUtility.Log($"Safe region found: {foundReg.DebugString}");
-            else LogUtility.Log($"No safe region found for {root.GetFirstPawn(map)} at {root} (t = {root.GetTemperatureForCell(map):F1}C)");
+            if (foundReg != null) {
+                log.Info($"Safe region found: {foundReg.DebugString}");
+            } else {
+                log.Info($"No safe region found for {root.GetFirstPawn(map)} at {root} (t = {root.GetTemperatureForCell(map):F1}C)");
+            }
             __result = foundReg;
             return false;
         }

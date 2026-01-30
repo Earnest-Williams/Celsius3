@@ -231,6 +231,9 @@ namespace Celsius
             }
 
             float snowDepth = map.GetAverageSnowDepth();
+            if (snowDepth > 0) {
+                log.Info("$Covering frozen terrain with average snow level of {snowDepth:F4}.");
+            }
 
             int cellsWithTerrainTemperature = 0;
             for (int i = 0; i < NumGridCells; i++) {
@@ -239,8 +242,9 @@ namespace Celsius
                 if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out ThermalProps unused)) {
                     cellsWithTerrainTemperature++;
                     terrainTemperatures[i] = map.mapTemperature.OutdoorTemp;
-                    // orig code only added snow iff a terrain freezed, which is strange.
-                    if (snowDepth > 0.0001f && !cell.Roofed(map)) {
+                    // NOTE: orig code only added snow iff a terrain freezed, which is strange.
+                    // this might double the amount of snow. Idk, do new maps have no snow initially?
+                    if (snowDepth > 0 && !cell.Roofed(map)) {
                         map.steadyEnvironmentEffects.AddFallenSnowAt(cell, snowDepth);
                     }
                 } else {
@@ -281,7 +285,7 @@ namespace Celsius
         }
         void PrefillCTProps(ThermalProps[] tpbuffer) {
             var log = new LogContext("PrefillCTProps");
-            Array.Clear(tpbuffer,0, tpbuffer.Length); // should fill with nulls
+            Array.Clear(tpbuffer,0, tpbuffer.Length); // should fill it with nulls
 
             for (int index = 0; index < tpbuffer.Length; index++) {
                 bool done = false;
@@ -374,7 +378,7 @@ namespace Celsius
             float minTemp = float.MaxValue;
             foreach (Thing thing in map.thingGrid.ThingsListAtFast(index)) {
                 if (thing.FireBulwark) { // not likely this could happen - a fire at a bulwark
-                    log.Warn("A fire at a bulwark ({thing}).. hmm. T={curTemp}");
+                    log.Info("A fire at a bulwark ({thing}).. hmm. T={curTemp}");
                     return;
                 }
                 if (thing.GetStatValue(StatDefOf.Flammability) > 0) {
@@ -388,12 +392,13 @@ namespace Celsius
             if (seenSomething) {
                 // a roundabout way for delayed temperature modification
                 float deltaT = curTemp - minTemp + 1;
-                log.Info(" deltaT={deltaT:F1}");
+                float deltaE = -deltaT * GetThermalPropertiesAt(index).heatCapacity / Settings.HeatPushEffect;
+                log.Spam(" deltaT={deltaT:F1} deltaE={deltaE}");
                 if (deltaT < 0) {
-                    PushHeat(index, -deltaT * GetThermalPropertiesAt(index).heatCapacity / Settings.HeatPushEffect);
+                    PushHeat(index, deltaE);
                 }
             } else {
-                log.Info(" nothing flammable here, doing nothing.");
+                log.Spam(" nothing flammable here, doing nothing.");
             }
         }
 #endregion EventHandlers
@@ -524,7 +529,6 @@ namespace Celsius
                     return;
                 case LoadSaveMode.PostLoadInit:
                     log.Info($"{Scribe.mode}");
-                    log.Info("Can we do the ice here?"); // let's at least try
                     if (iceConversionRequested) {
                         ConvertIceToIceNine();
                         iceConversionRequested = false;
@@ -615,8 +619,8 @@ namespace Celsius
             }
 
             // TODO: check flop consistency. terrainFlops must only have records for topterrain that
-            // has thermalprops but does not have turnsInto attribute. ideally -- ICE9 only. warn
-            // if that is not the case - that means some sloppy modding.
+            // has thermalprops but does not have turnsInto attribute. ideally -- ICE9 only.
+            // warn if that is not the case - that means some sloppy modding.
 
             log.Info($"done. (from mod {modVersion} format r{dataVersion})");
             mapNeedsInitialization = false;
@@ -872,7 +876,7 @@ namespace Celsius
                     void ProcessNeighbour(int neighbourIndex) =>
                         TemperatureUtility.CalculateHeatTransferCells(temperatures[neighbourIndex],
                             GetThermalPropertiesAt(neighbourIndex), cellProps.airflow, modelStepFactor,
-                                ref energy, ref heatFlow, false);
+                                ref energy, ref heatFlow);
 
                     if (cell.z > 0)
                         ProcessNeighbour(i - map.Size.x);

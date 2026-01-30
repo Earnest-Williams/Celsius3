@@ -38,7 +38,7 @@ namespace Celsius
                 if (tinfo == null) { // Crash early. This should not ever happen.
                     throw new InvalidOperationException($"TemperatureInfo-for-map MapComponent null on set for a map");
                 }
-                LC.Info("TemperatureUtility.TryGetTemprComp()", $"Caching tinfo lookup for {map}");
+                LC.Spam("TemperatureUtility.TryGetTemprComp()", $"Caching tinfo lookup for {map}");
                 temperatureInfos.Add(map, tinfo);
             }
             return true;
@@ -50,19 +50,7 @@ namespace Celsius
             }
         }
 
-        public static void SettingsChanged(bool afterSettingsLoad = false, bool fromSetup = false, bool afterSettingsReset = false) {
-            var log = new LogContext("SettingsChanged");
-
-            if (fromSetup) {
-                log.Info("fromSetup");
-            } else if (afterSettingsReset) {
-                log.Info("afterSettingsReset");
-            } else if (afterSettingsLoad) {
-                log.Info("afterSettingsLoad");
-            } else {
-                log.Info("Mod settings have changed. Updating data.");
-            }
-
+        public static void SettingsChanged() {
             // This disables vanilla autoignition.
             AccessTools.Field(typeof(SteadyEnvironmentEffects), "AutoIgnitionTemperatureRange").SetValue(null,
                 Settings.AutoignitionEnabled
@@ -122,7 +110,7 @@ namespace Celsius
 
         public static float GetTemperature(this Room room) {
             if (room == null) {
-                LogUtility.Log($"Trying to GetTemperature for null room!", LogLevel.Error);
+                LC.Error("TemperatureUtility.GetTemperature", "room is null");
                 return TemperatureTuning.DefaultTemperature;
             }
             if (room.Map == null) { // Room:Temperature should work since tempTracker is always there.
@@ -142,7 +130,7 @@ namespace Celsius
 
         static bool AlmostZero(float az) { return Mathf.Abs(az) < float.Epsilon; }
         public static void CalculateHeatTransferCells(float interactingTemperature, ThermalProps props, float airflow,
-                                                      float modelStepFactor, ref float energy, ref float heatFlow, bool log = false)
+                                                      float modelStepFactor, ref float energy, ref float heatFlow)
         {
             // props is neigh cell.  interactingTemperature neigh temp
             // aiflow is this cell airflow.
@@ -159,8 +147,7 @@ namespace Celsius
             float hf = AlmostZero(airflow) || AlmostZero(props.airflow)
                 ? props.HeatFlow
                 : props.HeatFlow * Mathf.Pow(Settings.ConvectionConductivityEffect, airflow * props.airflow);
-            if (log)
-                LogUtility.Log($"Interacting temperature: {interactingTemperature:F1}C. Mutual airflow: {airflow * props.airflow}. Heatflow: {hf:F3}.");
+
             hf = hf * modelStepFactor;
             heatFlow += hf;
             energy += interactingTemperature * hf;

@@ -31,7 +31,6 @@ namespace Celsius
             if (possibleSnowCells == 0)
                 return 0;
             snowDepth /= possibleSnowCells;
-            LogUtility.Log($"Covering frozen terrain with average snow level of {snowDepth:F4}.");
             return snowDepth;
         }
     }
