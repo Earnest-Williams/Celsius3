@@ -27,8 +27,7 @@ namespace Celsius
             return ostate == ThingOpenState.Open;
         }
     }
-// FIXME: 1. how to get to map; 2. what if we're minified and stuffed somewhere?
-// gotta
+
     public class CompThermal : ThingComp
     {
         public ThermallyRelevantState tstate;
@@ -51,24 +50,17 @@ namespace Celsius
             tstate.UpdateDamage(parent.HitPoints, parent.MaxHitPoints);
         }
 
-        // these come from event handlers in TemperatureInfo, the below is guaranteed.
-        // building must be === parent for these.
+        // these come from Harmony as map events don't compile for me.
         public void Notify_DoorOpened(Building door) {
-            if (ReferenceEquals(parent, door)) {
-                tstate.UpdateFlicks(ThingOpenState.Open);
-            }
+            tstate.UpdateFlicks(ThingOpenState.Open);
         }
 
         public void Notify_DoorClosed(Building door) {
-            if (ReferenceEquals(parent, door)) {
-                tstate.UpdateFlicks(ThingOpenState.Closed);
-            }
+            tstate.UpdateFlicks(ThingOpenState.Closed);
         }
 
         public void Notify_BuildingHitPointsChanged(Building building) {
-            if (ReferenceEquals(parent, building)) {
-                tstate.UpdateDamage(building.HitPoints, building.MaxHitPoints);
-            }
+            tstate.UpdateDamage(building.HitPoints, building.MaxHitPoints);
         }
 
 /*  this one is called by
