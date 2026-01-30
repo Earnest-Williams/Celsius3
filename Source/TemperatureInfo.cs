@@ -680,8 +680,7 @@ namespace Celsius
                 if (temperatures != null) {
                     log.Info($" : is from pre-2.0 Celsius. Converting.");
                     temperatures = DataUtility.Transpose(temperatures, map.Size.x);
-                    if (terrainTemperatures != null)
-                        terrainTemperatures = DataUtility.Transpose(terrainTemperatures, map.Size.x);
+                    terrainTemperatures = DataUtility.Transpose(terrainTemperatures, map.Size.x);
                     iceConversionRequested = true;
                 } else {
                     log.Info($" : looks like adding Celsius to an existing save.");
