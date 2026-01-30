@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Defs>
+  <TerrainDef ParentName="Ice" Name="IceNine">
+    <!-- an ice that does actually melt : default ice for vanilla waters -->
+    <defName>IceNine</defName>
+    <label>Ice Nine</label>
+    <modExtensions>
+        <li Class="Celsius.TerrainThermalProperties">
+            <heatCapacity>100</heatCapacity>
+            <insulation>5.5</insulation>
+            <phaseTransition>Melt</phaseTransition>
+            <transitionTemperature>0</transitionTemperature>
+        </li>
+    </modExtensions>
+  </TerrainDef>
+</Defs>

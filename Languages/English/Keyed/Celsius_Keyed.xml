@@ -42,7 +42,22 @@
 	<Celsius_Settings_DebugMode>Debug logging mode</Celsius_Settings_DebugMode>
 	<Celsius_Settings_DebugMode_tooltip>Verbose logging of Celsius' work. Required for bug reports.</Celsius_Settings_DebugMode_tooltip>
 	<Celsius_Settings_ResetDefault>Reset to default</Celsius_Settings_ResetDefault>
-	
+
+	<Celsius_Settings_ForceIceConversion>Force ice conversion in ice biomes (from 2.6 and older saves)</Celsius_Settings_ForceIceConversion>
+
+    <Celsius_Settings_SnowMeltRainFactor>Snow melt multiplier when raining: {0}</Celsius_Settings_SnowMeltRainFactor>
+	<Celsius_Settings_SnowMeltRainFactor_tooltip>Default {0}x</Celsius_Settings_SnowMeltRainFactor_tooltip>
+
+	<Celsius_Settings_Colors>Color overlay tweaks</Celsius_Settings_Colors>
+	<Celsius_Settings_T_MinMapped>Blue end: {0}</Celsius_Settings_T_MinMapped>
+	<Celsius_Settings_T_MinComfort>Green start: {0}</Celsius_Settings_T_MinComfort>
+	<Celsius_Settings_T_MaxComfort>Green end: {0}</Celsius_Settings_T_MaxComfort>
+	<Celsius_Settings_T_MaxMapped>Red end: {0}</Celsius_Settings_T_MaxMapped>
+	<Celsius_Settings_PressureExponent>Pressure exponent - brightness falloff when vacuum invades: {0}</Celsius_Settings_PressureExponent>
+	<Celsius_Settings_PressureExponent_tooltip>Default: {0}</Celsius_Settings_PressureExponent_tooltip>
+	<Celsius_Settings_T_Saturation>Saturation: {0}</Celsius_Settings_T_Saturation>
+	<Celsius_Settings_ResetColors>Reset colortemps</Celsius_Settings_ResetColors>
+
 	<Celsius_MapTempOverlay_Cell>Cell: {0}</Celsius_MapTempOverlay_Cell>
 	<Celsius_MapTempOverlay_Terrain>Terrain: {0}</Celsius_MapTempOverlay_Terrain>
 	<Celsius_Terrain>Terrain</Celsius_Terrain>
@@ -60,12 +75,12 @@
 	<Celsius_Stat_HeatCapacity_StuffVolumetricHeatCapacity>{0} volumetric heat capacity: {1}/m³</Celsius_Stat_HeatCapacity_StuffVolumetricHeatCapacity>
 	<Celsius_Stat_HeatCapacity_Volume>{0} volume: {1} m³</Celsius_Stat_HeatCapacity_Volume>
 	<Celsius_Stat_HeatCapacity_AirHeatCapacity>Air heat capacity: {0}</Celsius_Stat_HeatCapacity_AirHeatCapacity>
-	
+
 	<Celsius_Stat_Insulation_BaseInsulation>{0} base insulation: {1}</Celsius_Stat_Insulation_BaseInsulation>
 	<Celsius_Stat_Insulation_StuffInsulation>{0} insulation: </Celsius_Stat_Insulation_StuffInsulation>
 	<Celsius_Stat_Insulation_AirflowOpen>The {0} is open.</Celsius_Stat_Insulation_AirflowOpen>
 	<Celsius_Stat_Insulation_Airflow>Airflow: {0}</Celsius_Stat_Insulation_Airflow>
-	
+
 	<Celsius_StatPart_Wetness_Explanation>Wet: {0}</Celsius_StatPart_Wetness_Explanation>
 	<Celsius_StatPart_WindSpeed_Explanation>Wind {0}: {1}</Celsius_StatPart_WindSpeed_Explanation>
 	<Celsius_StatPart_DirectSunlight_Explanation>Direct sunlight: {0}</Celsius_StatPart_DirectSunlight_Explanation>

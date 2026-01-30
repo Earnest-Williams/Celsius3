@@ -7,46 +7,46 @@ namespace Celsius
 {
     public class StatWorker_Insulation : StatWorker
     {
-        public override float GetValueUnfinalized(StatRequest req, bool applyPostProcess = true)
-        {
-            ThermalProps thermalProps = req.HasThing
-                ? req.Thing.TryGetComp<CompThermal>()?.ThermalProperties
-                : req.Def?.GetModExtension<ThingThermalProperties>()?.GetThermalProps(req.StuffDef?.GetModExtension<StuffThermalProperties>());
-            return thermalProps != null ? thermalProps.insulation : 0;
+        public override float GetValueUnfinalized(StatRequest req, bool applyPostProcess = true) {
+            if (req.HasThing) {
+                if (TemperatureUtility.thermalsCache.TryGetThermals(req.Thing, out ThermalPair tpair)) {
+                    return tpair.closed.insulation;
+                }
+            } else {
+                if (TemperatureUtility.thermalsCache.TryGetThermals(req.Def, req.StuffDef, out ThermalPair tpair)) {
+                    return tpair.closed.insulation;
+                }
+            }
+            return 0;
         }
 
         public override string GetExplanationUnfinalized(StatRequest req, ToStringNumberSense numberSense)
         {
             ThingThermalProperties thingThermalProperties = null;
             StuffThermalProperties stuffThermalProperties = null;
-            ThermalProps thermalProps = null;
+            ThermalPair tpair = new ThermalPair();
             bool isOpen = false;
-            string label = null;
+            string label = "stuffLabel placeholder";
             string stuffLabel = null;
 
             if (req.HasThing)
             {
+                label = req.Thing.Label;
+                //stuffLabel = ;
                 CompThermal compThermal = req.Thing.TryGetComp<CompThermal>();
-                if (compThermal != null)
-                {
-                    label = req.Thing.Label;
-                    thingThermalProperties = compThermal.ThingThermalProperties;
-                    stuffLabel = req.Thing.GetStuff().label;
-                    stuffThermalProperties = compThermal.StuffThermalProperties;
-                    thermalProps = compThermal.ThermalProperties;
-                    isOpen = compThermal.IsOpen;
+                if (compThermal != null) {
+                    isOpen = compThermal.tstate.IsOpen();
+                    TemperatureUtility.thermalsCache.TryGetThermals(req.Thing, out tpair);
                 }
-            }
-
-            else if (req.Def != null)
-            {
+            } else if (req.Def != null) {
                 label = req.Def.label;
+                TemperatureUtility.thermalsCache.TryGetThermals(req.Def, req.StuffDef, out tpair);
                 thingThermalProperties = req.Def.GetModExtension<ThingThermalProperties>();
                 stuffLabel = req.StuffDef?.label;
                 stuffThermalProperties = req.StuffDef?.GetModExtension<StuffThermalProperties>();
-                thermalProps = thingThermalProperties?.GetThermalProps(stuffThermalProperties);
             }
 
+            var thermalProps = isOpen ? tpair.open : tpair.closed; // nullpair will result in null either way
             if (thermalProps == null)
                 return base.GetExplanationUnfinalized(req, numberSense);
 

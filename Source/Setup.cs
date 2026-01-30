@@ -20,31 +20,23 @@ namespace Celsius
         {
             if (harmony != null)
                 return;
-
-            LogUtility.Log($"Initializing Celsius {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version}...", LogLevel.Important);
+            var log = new LogContext("Setup");
+            var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
 
             harmony = new Harmony("Garwel.Celsius");
             if (!ApplyHarmonyPatches())
-                LogUtility.Log($"Failed to apply Harmony patches!", LogLevel.Error);
+                log.Error($"Failed to apply Harmony patches.");
 
             // Adding CompThermal to all applicable Things
             List<ThingThermalProperties> ttpList;
-            foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs.Where(def => CompThermal.ShouldApplyTo(def)))
-            {
+            foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs.Where(def => CompThermal.ShouldApplyTo(def))) {
                 def.comps.Add(new CompProperties(typeof(CompThermal)));
                 if ((ttpList = def.modExtensions.OfType<ThingThermalProperties>().ToList()).Count > 1)
-                    LogUtility.Log($"{def.defName} has {ttpList.Count} ThingThermalProperties extensions:\n{ttpList.Select(ttp => ttp.ToString()).ToLineList("- ")}", LogLevel.Warning);
+                    log.Warn($"{def.defName} has {ttpList.Count} ThingThermalProperties extensions:\n{ttpList.Select(ttp => ttp.ToString()).ToLineList("- ")}");
             }
+            TemperatureUtility.SettingsChanged(fromSetup: true);
 
-            if (Settings.DebugMode)
-                foreach (TerrainDef def in DefDatabase<TerrainDef>.AllDefs)
-                {
-                    TerrainThermalProperties terrainThermalProps = def.GetTerrainThermalProperties();
-                    if (terrainThermalProps != null)
-                        LogUtility.Log($"Terrain {def.defName}. {terrainThermalProps}");
-                }
-
-            TemperatureUtility.SettingsChanged();
+            log.Info($"Celsius {ver}");
         }
 
         public static bool IsHarmonyPatched => harmony.GetPatchedMethods().Any();
@@ -89,18 +81,44 @@ namespace Celsius
                     AccessTools.Method("RimWorld.GlobalControls:TemperatureString"),
                     prefix: new HarmonyMethod(type.GetMethod("GlobalControls_TemperatureString")));
                 harmony.Patch(
+                    AccessTools.Method("RimWorld.CompRitualFireOverlay:CompTick"),
+                    postfix: new HarmonyMethod(type.GetMethod("CompRitualFireOverlay_CompTick")));
+
+                harmony.Patch(
                     AccessTools.Method("RimWorld.Building_Door:DoorOpen"),
                     postfix: new HarmonyMethod(type.GetMethod("Building_Door_DoorOpen")));
                 harmony.Patch(
                     AccessTools.Method("RimWorld.Building_Door:DoorTryClose"),
                     postfix: new HarmonyMethod(type.GetMethod("Building_Door_DoorTryClose")));
+
                 harmony.Patch(
-                    AccessTools.Method("RimWorld.CompRitualFireOverlay:CompTick"),
-                    postfix: new HarmonyMethod(type.GetMethod("CompRitualFireOverlay_CompTick")));
+                    AccessTools.Method("Verse.TerrainGrid:SetTerrain"),
+                    postfix: new HarmonyMethod(type.GetMethod("TerrainGrid_SetTerrain")));
                 harmony.Patch(
-                    AccessTools.Method("Verse.PathFinder:PathFinderTick"),
-                    prefix: new HarmonyMethod(type.GetMethod("PathFinder_PathFinderTick_Prefix")),
-                    postfix: new HarmonyMethod(type.GetMethod("PathFinder_PathFinderTick_Postfix")));
+                    AccessTools.Method("Verse.TerrainGrid:RemoveTopLayer"),
+                    postfix: new HarmonyMethod(type.GetMethod("TerrainGrid_SetTerrain")));
+                harmony.Patch(
+                    AccessTools.Method("Verse.TerrainGrid:SetFoundation"),
+                    postfix: new HarmonyMethod(type.GetMethod("TerrainGrid_SetTerrain")));
+                harmony.Patch(
+                    AccessTools.Method("Verse.TerrainGrid:RemoveFoundation"),
+                    postfix: new HarmonyMethod(type.GetMethod("TerrainGrid_SetTerrain")));
+                harmony.Patch(
+                    AccessTools.Method("Verse.TerrainGrid:RemoveGravshipTerrainUnsafe"),
+                    postfix: new HarmonyMethod(type.GetMethod("TerrainGrid_RemoveGravshipTerrainUnsafe")));
+                harmony.Patch(
+                    AccessTools.Method("Verse.TerrainGrid:SetTempTerrain"),
+                    postfix: new HarmonyMethod(type.GetMethod("TerrainGrid_SetTerrain")));
+                harmony.Patch(
+                    AccessTools.Method("Verse.TerrainGrid:RemoveTempTerrain"),
+                    postfix: new HarmonyMethod(type.GetMethod("TerrainGrid_SetTerrain")));
+
+                harmony.Patch(
+                    AccessTools.Method("Verse.Building:SpawnSetup"),
+                    postfix: new HarmonyMethod(type.GetMethod("Building_SpawnSetup")));
+                harmony.Patch(
+                    AccessTools.Method("Verse.Building:DeSpawn"),
+                    postfix: new HarmonyMethod(type.GetMethod("Building_DeSpawn")));
 
                 MethodInfo method = AccessTools.Method("VanillaVehiclesExpanded.GarageDoor:SpawnGarage");
                 if (method != null)
@@ -109,7 +127,11 @@ namespace Celsius
                         postfix: new HarmonyMethod(type.GetMethod("VVE_GarageDoor_SpawnGarage")));
             }
             catch (Exception e)
-            { return false; }
+            {
+                Log.Error(e.ToString());
+                return false;
+
+            }
             return IsHarmonyPatched;
         }
 
@@ -181,20 +203,11 @@ namespace Celsius
         public static float SteadyEnvironmentEffects_MeltAmountAt(float result, float temperature) => 0;
 
         // Attaches to AttachableThing.Destroy to reduce temperature to just below the ignition temperature, when a Fire is destroyed
-        public static void AttachableThing_Destroy(AttachableThing __instance)
-        {
-            if (Settings.AutoignitionEnabled && __instance is Fire)
-            {
+        public static void AttachableThing_Destroy(AttachableThing __instance) {
+            if (Settings.AutoignitionEnabled && __instance is Fire) {
                 TemperatureInfo temperatureInfo = __instance.Map?.TemperatureInfo();
-                if (temperatureInfo != null)
-                {
-                    int index = __instance.Map.cellIndices.CellToIndex(__instance.Position);
-                    float temperature = temperatureInfo.GetIgnitionTemperatureForCell(index) - 1;
-                    if (temperature < temperatureInfo.GetTemperatureForCell(index))
-                    {
-                        LogUtility.Log($"Setting temperature at {__instance.Position} to {temperature:F0}C...");
-                        temperatureInfo.SetTemperatureForCell(index, temperature);
-                    }
+                if (temperatureInfo != null) {
+                    temperatureInfo.Notify_FireSnuffedOut(__instance.Position);
                 }
             }
         }
@@ -251,71 +264,115 @@ namespace Celsius
             if (temperatureInfo == null || !temperatureInfo.InBounds(index) || map.fogGrid.IsFogged(index))
                 return true;
             __result = temperatureInfo.GetTemperatureForCell(index).ToStringTemperature(Settings.TemperatureDisplayFormatString);
-            if (temperatureInfo.HasTerrainTemperatures)
-            {
-                float terrainTemperature = temperatureInfo.GetTerrainTemperature(index);
-                if (!float.IsNaN(terrainTemperature))
-                    // Localization Key: Celsius_Terrain - Terrain
-                    __result += $" / {"Celsius_Terrain".Translate()} {terrainTemperature.ToStringTemperature(Settings.TemperatureDisplayFormatString)}";
-            }
+            float terrainTemperature = temperatureInfo.GetTerrainTemperature(index);
+            if (!float.IsNaN(terrainTemperature))
+                // Localization Key: Celsius_Terrain - Terrain
+                __result += $" / {"Celsius_Terrain".Translate()} {terrainTemperature.ToStringTemperature(Settings.TemperatureDisplayFormatString)}";
             return false;
         }
 
         // When door is opening, update its state and thermal values
         public static void Building_Door_DoorOpen(Building_Door __instance)
         {
-            CompThermal compThermal = __instance?.TryGetComp<CompThermal>();
-            if (compThermal != null)
-                compThermal.IsOpen = true;
+            var tinfo = __instance.Map.TemperatureInfo(); // hate this backwards syntax sugar
+            tinfo.Notify_DoorOpened(__instance);
         }
 
         // When door is closing, update its state and thermal values
         public static void Building_Door_DoorTryClose(Building_Door __instance, bool __result)
         {
-            if (__result)
-            {
-                CompThermal compThermal = __instance?.TryGetComp<CompThermal>();
-                if (compThermal != null)
-                    compThermal.IsOpen = false;
+            if (__result) {
+                var tinfo = __instance.Map.TemperatureInfo(); // hate this backwards syntax sugar
+                tinfo.Notify_DoorClosed(__instance);
             }
         }
+        // everything that changes topGrid or foundationGrid - in Verse.TerrainGrid
+        // pfx: TerrainGrid_
+        //
+        // Stuffed into two postfixes since all we need is the IntVec3 and __instance
+        //
+        // SetTerrain is quite generic and will cause many unrelated notifications.
+        // must take care that whatever's done on our side is side-effect free
+        //      void SetTerrain(IntVec3 c, TerrainDef newTerr)
+        //      void RemoveTopLayer(IntVec3 c, bool doLeavings = true)
+        //      void SetFoundation(IntVec3 c, TerrainDef newTerr)
+        //      void RemoveFoundation(IntVec3 c, bool doLeavings = true)
+        //
+        // does not send TerrainChanged event, but still swaps in underterrain to top
+        //      void RemoveGravshipTerrainUnsafe(IntVec3 cell, int index)
+        //      void SetTempTerrain(IntVec3 c, TerrainDef newTerr)
+        //
+        // this one does not but calls this.SetTerrain(c, terrainDef.tempTerrain.terrainOnRemoved);
+        //      void RemoveTempTerrain(IntVec3 c, bool doLeavings = false, bool preventDestroyEffects = false)
 
-        const float HeatPushPerFireSize = 21;
+        public static void TerrainGrid_SetTerrain(TerrainGrid __instance, IntVec3 c) {
+            __instance.map.TemperatureInfo().Notify_TerrainChanged(c);
+        }
+
+        public static void TerrainGrid_RemoveGravshipTerrainUnsafe(TerrainGrid __instance, IntVec3 cell) {
+            __instance.map.TemperatureInfo().Notify_TerrainChanged(cell);
+        }
+
+        // Building spawn/despawn
+        //
+        // this one uses base.Map.blah_etc. for everything, but sends
+        //  the event to the parameter map.
+        //
+        //      void Building:SpawnSetup(Map map, bool respawningAfterLoad)
+        //
+        // respawningAfterLoad is true when from Map:FinalizeLoading().
+        // so we filter that out that here.  That's true for all things btw.
+        //
+        // skipping because building spawn goes before Map:FinalizeInit()
+        // which is the one that calls MapComponentUtility.FinalizeInit(this);
+        // as the last thing
+        // so those spawns are way before tinfo is initialized.
+        //
+        // this one also uses base.Map for everything. Why?
+        //
+        //      void Building:DeSpawn(DestroyMode mode = DestroyMode.Vanish)
+        //
+        //  because Thing knows which map it's on by mapIndexOrState into Find.Maps
+        // and this is updated in the middle of Thing:SpawnSetup
+        //
+        // so whatever, just do it like they do
+        //
+
+        public static void Building_SpawnSetup(Building __instance, Map map, bool respawningAfterLoad) {
+            if (!respawningAfterLoad) {
+                map.TemperatureInfo().Notify_BuildingSpawned(__instance);
+            }
+        }
+        public static void Building_DeSpawn(Building __instance) {
+            __instance.Map.TemperatureInfo().Notify_BuildingDespawned(__instance);
+        }
 
         // Adds heat push to ritual fires
         public static void CompRitualFireOverlay_CompTick(CompRitualFireOverlay __instance)
         {
             if (GenTicks.TicksAbs % 60 == 0 && __instance.FireSize > 0)
-                TemperatureUtility.TryPushHeat(__instance.parent.Position, __instance.parent.Map, __instance.FireSize * HeatPushPerFireSize);
-        }
-
-        // Mark the map as being updated by the pathfinder, to prevent freezing/melting of terrain during pathfinding
-        public static void PathFinder_PathFinderTick_Prefix(Map ___map)
-        {
-            TemperatureInfo temperatureInfo = ___map.TemperatureInfo();
-            if (temperatureInfo != null)
-                temperatureInfo.isPathfinderUpdating = true;
-        }
-
-        public static void PathFinder_PathFinderTick_Postfix(Map ___map)
-        {
-            TemperatureInfo temperatureInfo = ___map.TemperatureInfo();
-            if (temperatureInfo != null)
-                temperatureInfo.isPathfinderUpdating = false;
+                TemperatureUtility.TryPushHeat(__instance.parent.Position,
+                                               __instance.parent.Map,
+                                               __instance.FireSize * Settings.RitualHeatPushPerFireSize);
         }
 
         // Vanilla Vehicles Expanded: When opening or closing a garage door, update its state and thermal values
-        public static void VVE_GarageDoor_SpawnGarage(Building newGarage)
-        {
-            if (newGarage == null)
-            {
-                LogUtility.Log($"Error in VVE_GarageDoor_SpawnGarage: newGarage is null!", LogLevel.Error);
+        public static void VVE_GarageDoor_SpawnGarage(Building newGarage) {
+            if (newGarage == null) {
+                (new LogContext("VVE_GarageDoor_SpawnGarage")).Error("newGarage is null.");
                 return;
             }
             CompThermal compThermal = newGarage.TryGetComp<CompThermal>();
-            if (compThermal != null)
-                compThermal.IsOpen = newGarage.def.defName.EndsWith("Opened");
-            else LogUtility.Log($"There is no CompThermal for {newGarage.ThingID}.", LogLevel.Warning);
+            if (compThermal == null) {
+                (new LogContext("VVE_GarageDoor_SpawnGarage")).Error($"no CompThermal for {newGarage.ThingID}.");
+                return;
+            }
+
+            if (newGarage.def.defName.EndsWith("Opened")) {
+                compThermal.Notify_DoorOpened(newGarage);
+            } else {
+                compThermal.Notify_DoorClosed(newGarage);
+            }
         }
     }
 }

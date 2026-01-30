@@ -92,8 +92,15 @@
 			<li Class="Celsius.TerrainThermalProperties">
 				<heatCapacity>100</heatCapacity>
 				<insulation>5.5</insulation>
+<!--
+			This is now known as PerpetuallyFrozenIce.
+			Terrains above (with Freeze phaseTransition but without turnsInto)
+			turn into IceNine
+
+
 				<phaseTransition>Melt</phaseTransition>
-				<transitionTemperature>0</transitionTemperature>
+			<transitionTemperature>0</transitionTemperature>
+-->
 			</li>
 		</value>
 	</Operation>
