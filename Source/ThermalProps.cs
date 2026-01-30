@@ -147,12 +147,15 @@ namespace Celsius
 
         // TerrainDef.shortHash map to terrain ThermalProps. Prepopulated.
         Dictionary<ushort, ThermalProps> terrainCache = new Dictionary<ushort, ThermalProps>(16);
+        Dictionary<ushort, ThermalProps> _terrainCache = new Dictionary<ushort, ThermalProps>(16);
 
         // TerrainDef.shortHash map to terrain Flammability stat. Prepopulated.
         Dictionary<ushort, float> terrainFlammability =  new Dictionary<ushort, float>(16);
+        Dictionary<ushort, float> _terrainFlammability =  new Dictionary<ushort, float>(16);
 
         // Set of all ThingDefs that have CompThermal applied to.
         Dictionary<ushort, bool> defWhitelist = new Dictionary<ushort, bool>(64);
+        Dictionary<ushort, bool> _defWhitelist = new Dictionary<ushort, bool>(64);
 
         // ThingDef.SH<<16|StuffDef.SH map to thing ThermalProps. live update.
         // also caches negative hits as nulls.
@@ -173,12 +176,12 @@ namespace Celsius
         public void Flush() {
             log = new LogContext("ThermalsCache.Flush");
             flushMutex.WaitOne(); // lock everyone out while we repopulate dicts
-            terrainCache.Clear();
-            terrainFlammability.Clear();
+            _terrainCache.Clear();
+            _terrainFlammability.Clear();
             foreach (TerrainDef tdef in DefDatabase<TerrainDef>.AllDefsListForReading) {
                 var ttp = tdef.GetModExtension<TerrainThermalProperties>();
                 if (ttp != null) {
-                    terrainCache.Add(tdef.shortHash, new ThermalProps(ttp));
+                    _terrainCache.Add(tdef.shortHash, new ThermalProps(ttp));
                     if (ttp.heatCapacity < 0.001f) {
                         // TODO: was curious why all these checks of (!null and hC >0)
                         log.Info("terrain {tdef} has low heatCapacity of {ttp.heatCapacity}");
@@ -186,16 +189,20 @@ namespace Celsius
                 }
                 float tf = tdef.GetStatValueAbstract(StatDefOf.Flammability, null);
                 if (tf > Fire.MinFireSize) { // map.terrainGrid.TerrainAt(i).Flammable()
-                    terrainFlammability.Add(tdef.shortHash, tf);
+                    _terrainFlammability.Add(tdef.shortHash, tf);
                 }
             }
 
-            defWhitelist.Clear();
+            _defWhitelist.Clear();
             foreach (ThingDef def in DefDatabase<ThingDef>.AllDefs) {
                 if (CompThermal.ShouldApplyTo(def)) {
-                    defWhitelist.Add(def.shortHash, false);
+                    _defWhitelist.Add(def.shortHash, false);
                 }
             }
+
+            Gen.Swap(ref terrainCache, ref _terrainCache);
+            Gen.Swap(ref terrainFlammability, ref _terrainFlammability);
+            Gen.Swap(ref defWhitelist, ref _defWhitelist);
 
             thingCache.Clear();
             thingHits = 0;
