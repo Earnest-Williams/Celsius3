@@ -5,6 +5,7 @@
 	<author>Garwel</author>
 	<url>https://codeberg.org/lxnt/Celsius3</url>
 	<packageId>Garwel.Celsius</packageId>
+    <modVersion>2.7</modVersion>
 	<supportedVersions>
 		<li>1.6</li>
 	</supportedVersions>
