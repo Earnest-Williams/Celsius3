@@ -35,10 +35,11 @@ namespace Celsius
             }
             if (!temperatureInfos.TryGetValue(map, out tinfo)) {
                 tinfo = map.GetComponent<TemperatureInfo>();
-                if (tinfo == null) { // Crash early. This should not ever happen.
-                    throw new InvalidOperationException($"TemperatureInfo-for-map MapComponent null on set for a map");
+                if (tinfo == null) { // Happens with Map Preview for example
+                    LC.Spam("TemperatureUtility.TryGetTemprComp", $"MapComponent null on set for a map {map}");
+                    return false;
                 }
-                LC.Spam("TemperatureUtility.TryGetTemprComp()", $"Caching tinfo lookup for {map}");
+                LC.Spam("TemperatureUtility.TryGetTemprComp", $"Caching tinfo lookup for {map}");
                 temperatureInfos.Add(map, tinfo);
             }
             return true;
@@ -82,7 +83,7 @@ namespace Celsius
                 tinfo.PushHeat(cell, energy);
                 return true;
             }
-            LC.Error("TryPushHeat()", $"no tinfo for '{map}'");
+            LC.Error("TemperatureUtility.TryPushHeat", $"no tinfo for '{map}'");
             return false;
         }
 

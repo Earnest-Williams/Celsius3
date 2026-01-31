@@ -150,7 +150,25 @@ namespace Celsius
             }
 
             if (mapNeedsInitialization) {
-                InitializeTemperatures();
+                bool generated = false;
+                var st = new StackTrace();
+                for (int i = 0;i < st.FrameCount; i++) {
+                    var methodInfo = st.GetFrame(i).GetMethod();
+                    // patched (i.e. VEF): MonoMod.Utils.DynamicMethodDefinition:Verse.MapGenerator.GenerateMap_PatchN
+                    // not patched: Verse.MapGenerator:GenerateMap
+                    log.Spam($"  {methodInfo.DeclaringType}:{methodInfo.Name}");
+                    if (methodInfo.DeclaringType == typeof(Verse.MapGenerator)) {
+                        if (methodInfo.Name == "GenerateMap") {
+                            generated = true;
+                            break;
+                        }
+                    }
+                    if (-1 != methodInfo.Name.IndexOf("Verse.MapGenerator.GenerateMap")) {
+                        generated = true;
+                        break;
+                    }
+                }
+                InitializeTemperatures(generated);
                 mapNeedsInitialization = false;
             }
             // old data conversion is delayed until here since LoadSave Scribe phase is too early
@@ -236,8 +254,11 @@ namespace Celsius
             return snowDepth;
         }
 
-        void InitializeTemperatures() {
-            var log = new LogContext("InitializeTemperatures");
+        // mapJustGenerated to be true for new maps
+        // or else all room cells get 0C
+        void InitializeTemperatures(bool mapJustGenerated) {
+            var log = new LogContext($"InitializeTemperatures({map})");
+            log.Spam($"mapJustGenerated = {mapJustGenerated}");
 
             var NumGridCells = temperatures.Length;
 
@@ -247,7 +268,7 @@ namespace Celsius
             for (int i = 0; i < NumGridCells; i++) {
                 IntVec3 cell = map.cellIndices.IndexToCell(i);
                 Room room = cell.GetRoomOrAdjacent(map);
-                if (room != null) {
+                if (room != null && !mapJustGenerated) {
                     temperatures[i] = roomTemperatures[room.ID] = room.Temperature;
                 } else {
                     RoofDef roof = map.roofGrid.RoofAt(i);
