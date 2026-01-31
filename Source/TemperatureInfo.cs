@@ -710,6 +710,7 @@ namespace Celsius
         public void ThermalPropertiesInvalidated() {
             RepopulateCTProps();
         }
+#region UI
         public void ColorSettingsChanged() {
             overlayDrawer.SetDirty();
         }
@@ -814,7 +815,8 @@ namespace Celsius
                 Text.Font = font;
             }
         }
-
+#endregion UI
+#region ModelAndTick
         void ModelThreadMethod() {
             while (true) {
                 this.modelHandle.WaitOne();
@@ -1280,7 +1282,7 @@ namespace Celsius
             stopWatch.Stop();
             this.mapComponentTickMsecEma.update(stopWatch.ElapsedMilliseconds);
         }
-
+#endregion ModelAndTick
         public bool InBounds(int index) => index >= 0 && index < temperatures.Length;
 
         public float GetTemperatureForCell(int index) => temperatures != null ? temperatures[index] : TemperatureTuning.DefaultTemperature;
@@ -1289,7 +1291,7 @@ namespace Celsius
 
         public float GetRoomAverageTemperature(Room room) {
             if (room.ID == -1 || roomTemperatures == null) {
-                Log.Error($"Could not get temperature for room {room?.ToString() ?? "null"}.");
+                LC.Error("GetRoomAverageTemperature", $"No temperature for room {room?.ToString() ?? "null"}.");
                 return map.mapTemperature.OutdoorTemp;
             }
             if (roomTemperatures.TryGetValue(room.ID, out float temperature)) {

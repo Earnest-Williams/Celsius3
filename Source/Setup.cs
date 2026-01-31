@@ -127,7 +127,7 @@ namespace Celsius
             }
             catch (Exception e)
             {
-                Log.Error(e.ToString());
+                LC.Error("ApplyHarmonyPatches", $"Harmony patch failed: {e.ToString()}");
                 return false;
 
             }
