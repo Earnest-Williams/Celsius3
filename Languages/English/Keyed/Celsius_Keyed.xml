@@ -62,6 +62,7 @@
 	<Celsius_MapTempOverlay_Cell>Cell: {0}</Celsius_MapTempOverlay_Cell>
 	<Celsius_MapTempOverlay_Terrain>Terrain: {0}</Celsius_MapTempOverlay_Terrain>
 	<Celsius_Terrain>Terrain</Celsius_Terrain>
+	<Celsius_Weather>Weather</Celsius_Weather>
 
 	<!-- Translator hints:
 	Since the thermodynamics system implemented in Celsius is a simplification
