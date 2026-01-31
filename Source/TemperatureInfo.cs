@@ -116,8 +116,7 @@ namespace Celsius
         public TemperatureInfo(Map map) : base(map) { }
 
         public override void MapGenerated() {
-            LogContext log = new LogContext($"MapGenerated{map}");
-            log.Info("called.");
+            LC.Spam($"MapGenerated({map})", "called.");
         }
 
         public override void FinalizeInit()
@@ -525,7 +524,7 @@ namespace Celsius
 
         public override void ExposeData() {
             base.ExposeData();
-            LogContext log = new LogContext("ExposeData()");
+            LC.Spam("ExposeData({map})", $"{Scribe.mode}");
 
             string modVersion = null;
             string dataVersion = null;
@@ -535,10 +534,8 @@ namespace Celsius
 
             switch(Scribe.mode) {
                 case LoadSaveMode.Inactive:
-                    log.Info($"{Scribe.mode}");
                     return;
                 case LoadSaveMode.Saving:
-                    log = new LogContext($"Saving {map}");
                     SaveData();
                     return;
                 // the three below are in order as they are called.
@@ -551,10 +548,8 @@ namespace Celsius
                     }
                     return;
                 case LoadSaveMode.ResolvingCrossRefs:
-                    log.Info($"{Scribe.mode}");
                     return;
                 case LoadSaveMode.PostLoadInit:
-                    log.Info($"{Scribe.mode}");
                     if (iceConversionRequested) {
                         ConvertIceToIceNine();
                         iceConversionRequested = false;

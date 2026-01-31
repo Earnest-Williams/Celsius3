@@ -124,7 +124,7 @@ namespace Celsius
 
         public override void WriteSettings()
         {
-            LC.Info("CelsiusMod.SettingsChanged", "WriteSettings()");
+            LC.Spam("CelsiusMod.SettingsChanged", "WriteSettings");
             TemperatureUtility.SettingsChanged();
             base.WriteSettings();
             Settings.Dump();

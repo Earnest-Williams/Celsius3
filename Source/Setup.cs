@@ -21,7 +21,8 @@ namespace Celsius
             if (harmony != null)
                 return;
             var log = new LogContext("Setup");
-            var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
+            var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(2);
+            log.Info($"version {ver}");
 
             harmony = new Harmony("Garwel.Celsius");
             if (!ApplyHarmonyPatches())
@@ -35,7 +36,6 @@ namespace Celsius
                     log.Warn($"{def.defName} has {ttpList.Count} ThingThermalProperties extensions:\n{ttpList.Select(ttp => ttp.ToString()).ToLineList("- ")}");
             }
             TemperatureUtility.SettingsChanged();
-            log.Info($"Celsius {ver}");
         }
 
         public static bool IsHarmonyPatched => harmony.GetPatchedMethods().Any();
@@ -79,6 +79,7 @@ namespace Celsius
                 harmony.Patch(
                     AccessTools.Method("RimWorld.GlobalControls:TemperatureString"),
                     prefix: new HarmonyMethod(type.GetMethod("GlobalControls_TemperatureString")));
+
                 harmony.Patch(
                     AccessTools.Method("RimWorld.CompRitualFireOverlay:CompTick"),
                     postfix: new HarmonyMethod(type.GetMethod("CompRitualFireOverlay_CompTick")));
