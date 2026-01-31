@@ -33,6 +33,9 @@ namespace Celsius
         public static float T_MaxMapped;
         public static float T_Saturation;
 
+        public static bool ShowColorSettings;
+        public static bool MainTabButtonVisible;
+
         public const int TicksPerUpdate_Default = 120;
         public const float ConductivityPowerBase_Default = 0.5f;
         public const float ConvectionConductivityEffect_Default = 10;
@@ -49,6 +52,9 @@ namespace Celsius
         public const float T_MaxComfort_Default =  26.5f;
         public const float T_MaxMapped_Default  =  60.0f;
         public const float T_Saturation_Default  =  0.8f;
+
+        public static bool MainTabButtonVisible_Default = true;
+        public static bool ShowColorSettings_Default = false;
 
         static readonly LogContext log = new LogContext("Settings");
 
@@ -78,6 +84,9 @@ namespace Celsius
             Scribe_Values.Look(ref T_MaxComfort, "T_MaxComfort", T_MaxComfort_Default);
             Scribe_Values.Look(ref T_MaxMapped, "T_MaxMapped", T_MaxMapped_Default);
             Scribe_Values.Look(ref T_Saturation, "T_Saturation", T_Saturation_Default);
+
+            Scribe_Values.Look(ref MainTabButtonVisible, "MainTabButtonVisible", MainTabButtonVisible_Default);
+            Scribe_Values.Look(ref ShowColorSettings, "ShowColorSettings", ShowColorSettings_Default);
 
             if (Scribe.mode == LoadSaveMode.LoadingVars) {
                 RecalculateValues();
@@ -111,6 +120,8 @@ namespace Celsius
             CompatForceIceConversion = false;
             RitualHeatPushPerFireSize = RitualHeatPushPerFireSize_Default;
             SnowMeltRainFactor = SnowMeltRainFactor_Default;
+            MainTabButtonVisible = MainTabButtonVisible_Default;
+            ShowColorSettings = ShowColorSettings_Default;
 
             ResetColors();
 

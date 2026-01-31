@@ -1,11 +1,17 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
 <Defs>
-
-	<KeyBindingCategoryDef>
-		<defName>Celsius</defName>
-		<label>Celsius</label>
-		<description>Key bindings for Celsius mod.</description>
-	</KeyBindingCategoryDef>
-
+    <KeyBindingCategoryDef>
+        <defName>Celsius</defName>
+        <label>celsius</label>
+        <description>Key bindings for the Celsius mod.</description>
+        <isGameUniversal>true</isGameUniversal>
+        <checkForConflicts>
+            <li>Development</li>
+            <li>Game</li>
+            <li>GameMapCamera</li>
+            <!-- <li>SelectionMisc</li> -->
+            <li>MainTabs</li>
+        </checkForConflicts>
+    </KeyBindingCategoryDef>
 </Defs>

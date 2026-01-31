@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using Verse;
+using RimWorld;
 
 using static Celsius.Settings;
 
@@ -7,13 +8,22 @@ namespace Celsius
 {
     public class CelsiusMod : Mod
     {
+        private static CelsiusMod _instance;
+
+        static MainButtonDef _mtbd;
+
         Vector2 scrollPosition = new Vector2();
         Rect viewRect;
         Listing_Standard content = new Listing_Standard();
 
-        public CelsiusMod(ModContentPack content)
-            : base(content) =>
+        public CelsiusMod(ModContentPack content) : base(content) {
+            _instance = this;
             GetSettings<Settings>();
+        }
+
+		public static CelsiusMod getModHandle() {
+			return _instance;
+		}
 
         static bool Neareq(float a, float b, float epsilon = 0.0001f) {
             return Mathf.Abs(Mathf.Abs(a) - Mathf.Abs(b)) < epsilon;
@@ -32,6 +42,10 @@ namespace Celsius
             content.CheckboxLabeled("Celsius_Settings_AdvAutoignition".Translate(), ref AutoignitionEnabled, "Celsius_Settings_AdvAutoignition_tooltip".Translate());
             content.CheckboxLabeled("Celsius_Settings_PawnWeatherEffects".Translate(), ref PawnWeatherEffects, "Celsius_Settings_PawnWeatherEffects_tooltip".Translate());
 
+            content.CheckboxLabeled("Celsius_Settings_MainTabButtonVisible".Translate(), ref MainTabButtonVisible);
+            if (_mtbd == null) { _mtbd = DefDatabase<MainButtonDef>.GetNamedSilentFail("CelsiusTweak"); }
+            if (_mtbd != null) { _mtbd.buttonVisible = MainTabButtonVisible; }
+
             var fmt = $"N{TemperatureDisplayDigits}";
             content.Label("Celsius_Settings_TempDisplayDigits".Translate(TemperatureDisplayDigits.ToString(fmt)), tooltip: "Celsius_Settings_TempDisplayDigits_tooltip".Translate(TemperatureDisplayDigits_Default));
             TemperatureDisplayDigits = Mathf.RoundToInt(content.Slider(TemperatureDisplayDigits, 0, 2));
@@ -41,6 +55,7 @@ namespace Celsius
             SnowMeltRainFactor = content.Slider(SnowMeltRainFactor, 1, 5).RoundWithPrecision(0.05f);
 
             content.Gap();
+
             content.Label("Celsius_Settings_Colors".Translate());
 
             bool b = UseVanillaTemperatureColors;
@@ -49,39 +64,45 @@ namespace Celsius
 
             content.Gap();
 
-            float n;
-            content.Label("Celsius_Settings_T_MinMapped".Translate(T_MinMapped.ToStringTemperature()));
-            n = content.Slider(T_MinMapped, -75, 233);
-            if (!Neareq(n, T_MinMapped)) { T_MinMapped = n; TemperatureUtility.ColorSettingsChanged(); }
+            if (!ShowColorSettings) {
+                ShowColorSettings = content.ButtonText("Celsius_Settings_ShowColorSettings".Translate());
+            } else  {
+                ShowColorSettings = !content.ButtonText("Celsius_Settings_HideColorSettings".Translate());
 
-            content.Label("Celsius_Settings_T_MinComfort".Translate(T_MinComfort.ToStringTemperature()));
-            n = content.Slider(T_MinComfort, -75, 233);
-            if (n < T_MinMapped) n = T_MinMapped;
-            if (!Neareq(n, T_MinComfort)) { T_MinComfort = n; TemperatureUtility.ColorSettingsChanged(); }
+                float n;
+                content.Label("Celsius_Settings_T_MinMapped".Translate(T_MinMapped.ToStringTemperature()));
+                n = content.Slider(T_MinMapped, -75, 233);
+                if (!Neareq(n, T_MinMapped)) { T_MinMapped = n; TemperatureUtility.ColorSettingsChanged(); }
 
-            content.Label("Celsius_Settings_T_MaxComfort".Translate(T_MaxComfort.ToStringTemperature()));
-            n = content.Slider(T_MaxComfort, -75, 233);
-            if (n < T_MinComfort) n = T_MinComfort;
-            if (!Neareq(n, T_MaxComfort)) { T_MaxComfort = n; TemperatureUtility.ColorSettingsChanged(); }
+                content.Label("Celsius_Settings_T_MinComfort".Translate(T_MinComfort.ToStringTemperature()));
+                n = content.Slider(T_MinComfort, -75, 233);
+                if (n < T_MinMapped) n = T_MinMapped;
+                if (!Neareq(n, T_MinComfort)) { T_MinComfort = n; TemperatureUtility.ColorSettingsChanged(); }
 
-            content.Label("Celsius_Settings_T_MaxMapped".Translate(T_MaxMapped.ToStringTemperature()));
-            n = content.Slider(T_MaxMapped, -75, 233);
-            if (n < T_MaxComfort) n = T_MaxComfort;
-            if (!Neareq(n, T_MaxMapped)) { T_MaxMapped = n; TemperatureUtility.ColorSettingsChanged(); }
+                content.Label("Celsius_Settings_T_MaxComfort".Translate(T_MaxComfort.ToStringTemperature()));
+                n = content.Slider(T_MaxComfort, -75, 233);
+                if (n < T_MinComfort) n = T_MinComfort;
+                if (!Neareq(n, T_MaxComfort)) { T_MaxComfort = n; TemperatureUtility.ColorSettingsChanged(); }
 
-            content.Label("Celsius_Settings_T_Saturation".Translate(T_Saturation.ToStringPercent()));
-            n = content.Slider(T_Saturation * 100.0f, 0.0f, 100.0f).RoundWithPrecision(0.1f) / 100.0f;
-            if (!Neareq(n, T_Saturation)) { T_Saturation = n; TemperatureUtility.ColorSettingsChanged(); }
+                content.Label("Celsius_Settings_T_MaxMapped".Translate(T_MaxMapped.ToStringTemperature()));
+                n = content.Slider(T_MaxMapped, -75, 233);
+                if (n < T_MaxComfort) n = T_MaxComfort;
+                if (!Neareq(n, T_MaxMapped)) { T_MaxMapped = n; TemperatureUtility.ColorSettingsChanged(); }
 
-            content.Label("Celsius_Settings_PressureExponent".Translate(PressureExponent.ToStringDecimalIfSmall()),
-                tooltip: "Celsius_Settings_PressureExponent_tooltip".Translate(PressureExponent_Default));
+                content.Label("Celsius_Settings_T_Saturation".Translate(T_Saturation.ToStringPercent()));
+                n = content.Slider(T_Saturation * 100.0f, 0.0f, 100.0f).RoundWithPrecision(0.1f) / 100.0f;
+                if (!Neareq(n, T_Saturation)) { T_Saturation = n; TemperatureUtility.ColorSettingsChanged(); }
 
-            n = content.Slider(PressureExponent, 1, 8).RoundWithPrecision(0.1f);
-            if (!Neareq(n, PressureExponent)) { PressureExponent = n; TemperatureUtility.ColorSettingsChanged(); }
+                content.Label("Celsius_Settings_PressureExponent".Translate(PressureExponent.ToStringDecimalIfSmall()),
+                    tooltip: "Celsius_Settings_PressureExponent_tooltip".Translate(PressureExponent_Default));
 
-            if (content.ButtonText("Celsius_Settings_ResetColors".Translate())) {
-                ResetColors();
-                TemperatureUtility.ColorSettingsChanged();
+                n = content.Slider(PressureExponent, 1, 8).RoundWithPrecision(0.1f);
+                if (!Neareq(n, PressureExponent)) { PressureExponent = n; TemperatureUtility.ColorSettingsChanged(); }
+
+                if (content.ButtonText("Celsius_Settings_ResetColors".Translate())) {
+                    ResetColors();
+                    TemperatureUtility.ColorSettingsChanged();
+                }
             }
 
             content.Gap();
@@ -108,9 +129,11 @@ namespace Celsius
 
             content.CheckboxLabeled("Celsius_Settings_DebugMode".Translate(), ref DebugMode, "Celsius_Settings_DebugMode_tooltip".Translate());
 
+            content.Gap();
             if (content.ButtonText("Celsius_Settings_ResetDefault".Translate()))
                 Reset();
 
+            content.Gap();
             if (content.ButtonText("Celsius_Settings_MeltIceNine".Translate())) {
                 TemperatureUtility.MeltIceNine();
             }

@@ -1,0 +1,12 @@
+<Defs>
+    <MainButtonDef>
+        <defName>CelsiusTweak</defName>
+        <label>Celsius Tweak</label>
+        <description>Opens settings for now.</description>
+        <tabWindowClass>Celsius.TweakWindow</tabWindowClass>
+        <order>490</order>
+        <iconPath>ui/mainbutton</iconPath>
+        <!-- <validWithoutMap>false</validWithoutMap> -->
+        <minimized>True</minimized>
+    </MainButtonDef>
+</Defs>

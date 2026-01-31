@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8" ?>
 
 <Defs>
-  
-  <KeyBindingDef ParentName="GameMapKeyBinding">
-    <defName>Celsius_SwitchTemperatureMap</defName>
-    <label>toggle heat overlay</label>
-    <category>Celsius</category>
-    <defaultKeyCodeA>B</defaultKeyCodeA>
-  </KeyBindingDef>
+    <KeyBindingDef Name="CelsiusKeyBinding" Abstract="true">
+        <category>GameMapCamera</category>
+    </KeyBindingDef>
 
+    <KeyBindingDef  ParentName="CelsiusKeyBinding">
+        <defName>Celsius_Tweak</defName>
+        <category>Celsius</category>
+        <label>Open tweak window</label>
+        <defaultKeyCodeA>KeypadMinus</defaultKeyCodeA>
+    </KeyBindingDef>
+    <KeyBindingDef ParentName="CelsiusKeyBinding">
+        <defName>Celsius_SwitchTemperatureMap</defName>
+        <label>toggle heat overlay</label>
+        <category>Celsius</category>
+        <defaultKeyCodeA>B</defaultKeyCodeA>
+    </KeyBindingDef>
 </Defs>

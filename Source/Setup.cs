@@ -46,6 +46,8 @@ namespace Celsius
             try
             {
                 RemoveHarmonyPatches();
+                harmony.PatchAll();
+
                 harmony.Patch(
                     AccessTools.Method("Verse.GenTemperature:TryGetDirectAirTemperatureForCell"),
                     prefix: new HarmonyMethod(type.GetMethod("GenTemperature_TryGetDirectAirTemperatureForCell")));
