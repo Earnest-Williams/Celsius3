@@ -84,6 +84,7 @@ namespace Celsius
         public struct TerrainChange {
             public int at;
             public PTDir dir;
+            public float addSnow;  // used only in map conversions when first adding the mod.
         };
         ConcurrentBag<TerrainChange> terrainsChanged = new ConcurrentBag<TerrainChange>();
 
@@ -263,7 +264,7 @@ namespace Celsius
             var NumGridCells = temperatures.Length;
 
             float outdoorTemperature = map.mapTemperature.OutdoorTemp;
-            float indoorTemperature = map.mapTemperature.SeasonalTemp;
+            float seasonalTemperature = map.mapTemperature.SeasonalTemp;
 
             for (int i = 0; i < NumGridCells; i++) {
                 IntVec3 cell = map.cellIndices.IndexToCell(i);
@@ -272,13 +273,15 @@ namespace Celsius
                     temperatures[i] = roomTemperatures[room.ID] = room.Temperature;
                 } else {
                     RoofDef roof = map.roofGrid.RoofAt(i);
-                    temperatures[i] = roof != null && roof.isThickRoof ? indoorTemperature : outdoorTemperature;
+                    temperatures[i] = roof != null && roof.isThickRoof ? seasonalTemperature : outdoorTemperature;
                 }
             }
 
             float snowDepth = GetAverageSnowDepth(map);
             if (snowDepth > 0) {
-                log.Info("$Covering frozen terrain with average snow level of {snowDepth:F4}.");
+                log.Info($"Covering frozen terrain with average snow level of {snowDepth:F4}.");
+            } else {
+                snowDepth = float.NaN; // not covering.
             }
 
             int cellsWithTerrainTemperature = 0;
@@ -288,18 +291,13 @@ namespace Celsius
                 if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out ThermalProps unused)) {
                     cellsWithTerrainTemperature++;
                     terrainTemperatures[i] = map.mapTemperature.OutdoorTemp;
-                    // NOTE: orig code only added snow iff a terrain freezed, which is strange.
-                    // this might double the amount of snow. Idk, do new maps have no snow initially?
-                    if (snowDepth > 0 && !cell.Roofed(map)) {
-                        map.steadyEnvironmentEffects.AddFallenSnowAt(cell, snowDepth);
-                    }
                 } else {
                     terrainTemperatures[i] = float.NaN;
                 }
             }
             log.Info($"{cellsWithTerrainTemperature}/{NumGridCells} cells track terrain temperature.");
 
-            CollectTerrainEffects(); // melt/freeze. melt snow for one tick.
+            CollectTerrainEffects(snowDepth); // melt/freeze. add snow, melt it for one tick.
 
             log.Info($"{terrainFlops.Count} terrain flops, {snowsMelted.Count} snowmelts and {firesStarted.Count} autoignitions.");
 
@@ -973,7 +971,7 @@ namespace Celsius
         // Based on vanilla formula: 0.0058 * T * [T / 10] for 0.06% of cells every tick
         static float SnowChangeAmountAt(float temperature) => -0.00058f * 0.0006f * temperature * Mathf.Clamp(temperature, 0, 10);
         // Converts temperature field into stuff happening. Also threadpooled.
-        void CollectTerrainEffects() {
+        void CollectTerrainEffects(float snowDepth = float.NaN) {
             var stopWatch = Stopwatch.StartNew();
             int runStartTick = GenTicks.TicksGame;
             int ticksSinceLastStart = runStartTick - this.collectorStartTick;
@@ -998,10 +996,12 @@ namespace Celsius
                     if (Settings.FreezingAndMeltingEnabled && !float.IsNaN(terrainTemperature)) {
                         if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out ThermalProps terrainProps)) {
                             if (terrainProps.MeltsAt(terrainTemperature)) {
-                                terrainsChanged.Add(new TerrainChange() { at = i, dir = PTDir.Melt } );
+                                terrainsChanged.Add(new TerrainChange() { at = i, dir = PTDir.Melt, addSnow = float.NaN } );
                             } else {
                                 if (terrainProps.FreezesAt(terrainTemperature)) {
-                                    terrainsChanged.Add(new TerrainChange() { at = i, dir = PTDir.Freeze } );
+                // NOTE: original code added snow on first run on a map if a terrain was about to freeze,
+                // since it usually wasn't accepting it before (because it was water). NaN means no snow.
+                                    terrainsChanged.Add(new TerrainChange() { at = i, dir = PTDir.Freeze, addSnow = snowDepth } );
                                 }
                             }
                         }
@@ -1108,6 +1108,7 @@ namespace Celsius
                 TerrainDef terrain = cell.GetTerrain(map);
                 log = new LogContext($"ApplyTerrainEffects[{cell.x}, {cell.x}] terrain={terrain}");
                 TerrainDef nextTerrain = null;
+
                 if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out ThermalProps terrainProps)) {
                     nextTerrain = terrainProps.turnsInto;
                 }  else {
@@ -1120,7 +1121,7 @@ namespace Celsius
                 if (terrainFlops.TryGetValue(tc.at, out TerrainDef flopDef)) {
                     if (nextTerrain != null) {
                         // most probably stuck there due to modlist changes
-                        log.Warn($"both turnsInto: {nextTerrain} and a record in flops: {flopDef}.");
+                        log.Warn($"both turnsInto: {nextTerrain} and a record in flops: {flopDef}, using turnsInto.");
                         terrainFlops.Remove(tc.at);
                     } else { // aha, here we go.
                         nextTerrain = flopDef;
@@ -1242,6 +1243,13 @@ namespace Celsius
                 //  which amounts to mostly same things.
                 //
                 map.terrainGrid.SetTerrain(cell, nextTerrain);
+                if (tc.dir == PTDir.Freeze) {
+                    // add snow (usually for the first run of the map
+                    // here because SetTerrain would clear it otherwise
+                    if (!float.IsNaN(tc.addSnow)) {
+                        map.snowGrid.AddDepth(cell, tc.addSnow);
+                    }
+                }
             }
         }
         // called from model thread just before model run to do what's written on the can
@@ -1262,13 +1270,14 @@ namespace Celsius
             int ticksSinceLastModelStart = thisTick - this.modelStartTick;
             int ticksSinceLastCollectorStart = thisTick - this.collectorStartTick;
 
-            if (thisTick % 180 == 0) {
+            if (thisTick % 180 == 1) {
                 var str = $"tick {thisTick}: runs: {modelRuns}/{collectRuns} {modelMsecEma.ema:F2} / {collectorMsecEma.ema:F2} ms ";
                 str += $"periods: {modelTickEma.ema:F2} / {collectorTickEma.ema:F2} ticks ";
                 str += $"mct {mapComponentTickMsecEma.ema:F2} ms";
                 log.Info(str);
+                log.Spam($"outdoor={map.mapTemperature.OutdoorTemp} seasonal={map.mapTemperature.SeasonalTemp}");
             }
-            if (thisTick % 1800 == 0) {
+            if (thisTick % 1800 == 1) {
                 TemperatureUtility.thermalsCache.LogStats();
             }
 
