@@ -43,7 +43,8 @@
 	<Celsius_Settings_DebugMode_tooltip>Verbose logging of Celsius' work. Required for bug reports.</Celsius_Settings_DebugMode_tooltip>
 	<Celsius_Settings_ResetDefault>Reset to default</Celsius_Settings_ResetDefault>
 
-	<Celsius_Settings_ForceIceConversion>Force ice conversion in ice biomes (from 2.6 and older saves)</Celsius_Settings_ForceIceConversion>
+	<Celsius_Settings_ForceIceConversion>Force ice conversion in ice biomes (loading 2.6 and older saves)</Celsius_Settings_ForceIceConversion>
+    <Celsius_Settings_ForceIceConversion_tooltip>Caution: will convert all ice to meltable variety.</Celsius_Settings_ForceIceConversion_tooltip>
 
     <Celsius_Settings_SnowMeltRainFactor>Snow melt multiplier when raining: {0}</Celsius_Settings_SnowMeltRainFactor>
 	<Celsius_Settings_SnowMeltRainFactor_tooltip>Default {0}x</Celsius_Settings_SnowMeltRainFactor_tooltip>
@@ -62,6 +63,7 @@
     <Celsius_Settings_MainTabButtonVisible>Main tab button</Celsius_Settings_MainTabButtonVisible>
     <Celsius_Settings_ShowColorSettings>Show color settings</Celsius_Settings_ShowColorSettings>
     <Celsius_Settings_HideColorSettings>Hide color settings</Celsius_Settings_HideColorSettings>
+    <Celsius_Settings_FlushCaches>Flush ThermalProps caches</Celsius_Settings_FlushCaches>
 
 	<Celsius_MapTempOverlay_Cell>Cell: {0}</Celsius_MapTempOverlay_Cell>
 	<Celsius_MapTempOverlay_Terrain>Terrain: {0}</Celsius_MapTempOverlay_Terrain>

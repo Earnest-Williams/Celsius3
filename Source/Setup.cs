@@ -35,7 +35,7 @@ namespace Celsius
                 if ((ttpList = def.modExtensions.OfType<ThingThermalProperties>().ToList()).Count > 1)
                     log.Warn($"{def.defName} has {ttpList.Count} ThingThermalProperties extensions:\n{ttpList.Select(ttp => ttp.ToString()).ToLineList("- ")}");
             }
-            TemperatureUtility.SettingsChanged();
+            Settings.ApplyAll();
         }
 
         public static bool IsHarmonyPatched => harmony.GetPatchedMethods().Any();

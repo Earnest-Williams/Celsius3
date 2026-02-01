@@ -1,5 +1,7 @@
-﻿using UnityEngine;
+﻿using HarmonyLib;
+using UnityEngine;
 using Verse;
+using RimWorld;
 
 namespace Celsius
 {
@@ -58,7 +60,7 @@ namespace Celsius
 
         static readonly LogContext log = new LogContext("Settings");
 
-        public Settings() => Reset(notifyTU: false);
+        public Settings() => Reset();
 
         public override void ExposeData()
         {
@@ -89,9 +91,8 @@ namespace Celsius
             Scribe_Values.Look(ref ShowColorSettings, "ShowColorSettings", ShowColorSettings_Default);
 
             if (Scribe.mode == LoadSaveMode.LoadingVars) {
-                RecalculateValues();
                 LC.Spam("Settings", "Settings loaded.");
-                TemperatureUtility.SettingsChanged();
+                ApplyAll();
             }
         }
 
@@ -104,7 +105,7 @@ namespace Celsius
             T_Saturation = T_Saturation_Default;
         }
 
-        public static void Reset(bool notifyTU = false)
+        public static void Reset()
         {
             UseVanillaTemperatureColors = false;
             ShowTemperatureTooltip = true;
@@ -124,17 +125,34 @@ namespace Celsius
             ShowColorSettings = ShowColorSettings_Default;
 
             ResetColors();
-
             RecalculateValues();
 
-            if (notifyTU) {
-                TemperatureUtility.SettingsChanged();
-            }
             LC.Spam("Settings", "Settings reset.");
             Dump();
         }
 
-        static void RecalculateValues() {
+        public static void UpdateMainTabButtonVisibility() {
+            var mtbd = DefDatabase<MainButtonDef>.GetNamedSilentFail("CelsiusTweak");
+            if (mtbd != null) { mtbd.buttonVisible = Settings.MainTabButtonVisible; }
+        }
+
+        public static void UpdateAutoignition() {
+            // This disables vanilla autoignition.
+            AccessTools.Field(typeof(SteadyEnvironmentEffects), "AutoIgnitionTemperatureRange").SetValue(null,
+                Settings.AutoignitionEnabled
+                    ? new FloatRange(float.MaxValue/2, float.MaxValue) // disable for good.
+                    : new FloatRange(240, 1000));  // that's in vanilla code. why limit at 1000 though?
+        }
+
+        public static void ApplyAll() {
+            RecalculateValues();
+            UpdateMainTabButtonVisibility();
+            UpdateAutoignition();
+            TemperatureUtility.ColorSettingsChanged();
+            TemperatureUtility.FlushCaches();
+        }
+
+        public static void RecalculateValues() {
             TemperatureDisplayFormatString = $"F{TemperatureDisplayDigits}";
             ConductivityPowerBase = Mathf.Pow(ConductivityPowerBase_Default, (float)TicksPerUpdate_Default / TicksPerUpdate);
             RoofDiffusionFactor = EnvironmentDiffusionFactor * Mathf.Pow(ConductivityPowerBase, RoofInsulation);

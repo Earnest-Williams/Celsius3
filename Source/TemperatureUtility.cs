@@ -51,13 +51,7 @@ namespace Celsius
             }
         }
 
-        public static void SettingsChanged() {
-            // This disables vanilla autoignition.
-            AccessTools.Field(typeof(SteadyEnvironmentEffects), "AutoIgnitionTemperatureRange").SetValue(null,
-                Settings.AutoignitionEnabled
-                    ? new FloatRange(float.MaxValue/2, float.MaxValue) // disable for good.
-                    : new FloatRange(240, 1000));  // that's in vanilla code. why limit at 1000 though?
-
+        public static void FlushCaches() {
             // Flush ThermalProps cache
             thermalsCache.Flush();
 
