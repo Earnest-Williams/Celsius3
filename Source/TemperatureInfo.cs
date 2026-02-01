@@ -33,7 +33,7 @@ namespace Celsius
         EMA collectorMsecEma = new EMA(3, 1);
         EMA modelTickEma = new EMA(3, 1);
         EMA modelMsecEma = new EMA(3, 1);
-
+        EMA modelStepEma = new EMA(3, 0.01f);
         // Time spent in MapComponentTick
         EMA mapComponentTickMsecEma = new EMA(3, 1);
 
@@ -58,9 +58,8 @@ namespace Celsius
         // so we make do without double-buffering
         float[] terrainTemperatures;
 
-        // Buildings' ThermalProps. double-buffering actually not needed.
-        ThermalProps[] readCTProps;
-        ThermalProps[] writeCTProps;
+        // Buildings' ThermalProps.
+        ThermalProps[] cachedTProps;
 
         Dictionary<int, float> roomTemperatures = new Dictionary<int, float>();
 
@@ -306,29 +305,20 @@ namespace Celsius
             //if (false) { ApplyTerrainEffects(); }
         }
 
-#region CTBuffers
-        void SwapCTProps() {
-            Gen.Swap(ref readCTProps, ref writeCTProps);
-        }
-
+#region CTBuffer
         void RepopulateCTProps() {
             LogContext log = new LogContext($"RepopulateCTProps({map})");
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
-            if (writeCTProps == null) {
-                writeCTProps = new ThermalProps[map.cellIndices.NumGridCells];
+            if (cachedTProps == null) {
+                cachedTProps = new ThermalProps[map.cellIndices.NumGridCells];
             }
-            PrefillCTProps(writeCTProps);
-            if (readCTProps == null) {
-                readCTProps = (ThermalProps[])writeCTProps.Clone();
-            } else {
-                writeCTProps.CopyTo(readCTProps, 0);
-            }
+            PrefillCTProps(cachedTProps);
             stopWatch.Stop();
             log.Info($"done in {stopWatch.ElapsedMilliseconds} ms.");
         }
         void PrefillCTProps(ThermalProps[] tpbuffer) {
-            var log = new LogContext("PrefillCTProps");
+            var log = new LogContext($"PrefillCTProps({map}");
             Array.Clear(tpbuffer,0, tpbuffer.Length); // should fill it with nulls
 
             for (int index = 0; index < tpbuffer.Length; index++) {
@@ -352,33 +342,56 @@ namespace Celsius
                 }
             }
         }
-#endregion CTBuffers
-#region EventHandlers
-        void UpdateCTProps(Building building) {
+        public ThermalProps GetThermalPropertiesAt(int index) {
+            ThermalProps props = cachedTProps[index];
+            return props == null ? ThermalProps.Air : props;
+        }
+        void UpdateCTProps(Building building, bool remove = false) {
             if (!initialized) { return; }
             if (building == null ) { return; }
 
+            var log = new LogContext("UpdateCTProps");
+
             ThermalProps tprops = null;
-            if (building.Spawned) {
-                if (TemperatureUtility.thermalsCache.TryGetThermals(building, out ThermalPair tpair)) {
-                    var ct = building.TryGetComp<CompThermal>();
-                    tprops = ct.tstate.IsOpen() ? tpair.open : tpair.closed;
+            if (!remove) {
+                if (building.Spawned) {
+                    if (TemperatureUtility.thermalsCache.TryGetThermals(building, out ThermalPair tpair)) {
+                        var ct = building.TryGetComp<CompThermal>();
+                        tprops = ct.tstate.IsOpen() ? tpair.open : tpair.closed;
+                    } else {
+                        log.Spam($"no tprops for {building}");
+                        return;
+                    }
+                } else {
+                    log.Spam($"ignoring non-spawned {building}");
+                    return;
                 }
+            } else {
+                log.Spam($"removed: {building}. ocrect = '{building.OccupiedRect()}'");
             }
+
             foreach (IntVec3 cell in building.OccupiedRect()) {
-                writeCTProps[map.cellIndices.CellToIndex(cell)] = tprops;
+                cachedTProps[map.cellIndices.CellToIndex(cell)] = tprops;
             }
         }
-
+#endregion CTBuffer
+#region EventHandlers
         public void Notify_BuildingSpawned(Building building) {
+            LC.Spam("Notify_BuildingSpawned",$"what={building} at={building.Position}");
             UpdateCTProps(building);
         }
         public void Notify_BuildingDespawned(Building building) {
-            UpdateCTProps(building);
+            LC.Spam("Notify_BuildingDespawned",$"what={building} at={building.Position}");
+            UpdateCTProps(building, remove: true);
+        }
+        public void Notify_BuildingDestroyed(Building building) {
+            LC.Spam("Notify_BuildingDestroyed",$"what={building} at={building.Position}");
+            UpdateCTProps(building, remove: true);
         }
         // this is called from CompThermal and in theory we can avoid CT lookups
         // or pass ostate here directly but do not do that for the sake of clarity.
         public void Notify_BuildingFlicked(Building building) {
+            LC.Spam("Notify_BuildingFlicked",$"what={building} at={building.Position}");
             UpdateCTProps(building);
         }
         // this is triggered by
@@ -392,6 +405,7 @@ namespace Celsius
             if (!initialized) { return; }
             var i = map.cellIndices.CellToIndex(cell);
             TerrainDef terrain = map.terrainGrid.TerrainAtIgnoreTemp(i);
+            LC.Spam("Notify_TerrainChanged", $"at={cell} to={terrain}");
             if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out ThermalProps unused)) {
                 terrainTemperatures[i] = temperatures[i];
             } else {
@@ -415,7 +429,7 @@ namespace Celsius
 
         // I'm still not sure why this hack is even needed.
         public void Notify_FireSnuffedOut(IntVec3 cell) {
-            var log = new LogContext("Notify_FireSnuffedOut({cell.x}, {cell.z})");
+            var log = new LogContext($"Notify_FireSnuffedOut({cell.x}, {cell.z})");
             int index = map.cellIndices.CellToIndex(cell);
             bool seenSomething = false;
             float curTemp = temperatures[index];
@@ -437,7 +451,7 @@ namespace Celsius
                 // a roundabout way for delayed temperature modification
                 float deltaT = curTemp - minTemp + 1;
                 float deltaE = -deltaT * GetThermalPropertiesAt(index).heatCapacity / Settings.HeatPushEffect;
-                log.Spam(" deltaT={deltaT:F1} deltaE={deltaE}");
+                log.Spam($" deltaT={deltaT:F1} deltaE={deltaE}");
                 if (deltaT < 0) {
                     PushHeat(index, deltaE);
                 }
@@ -840,7 +854,6 @@ namespace Celsius
                 if (this.threadsExitRequested) {
                     break;
                 }
-                SwapCTProps(); // get freshest info
                 ApplyCannedHeat();
                 UpdateTemperatures();
                 Gen.Swap(ref temperatures, ref worksetTemperatures);
@@ -873,6 +886,8 @@ namespace Celsius
             // originally calibrated for 120 ticks per step.
             const float oldUpdateInterval = 120.0f;
             float modelStepFactor = (float)ticksSinceLastStart / oldUpdateInterval;
+
+            this.modelStepEma.update(modelStepFactor);
 
             float outdoorTemperature = map.mapTemperature.OutdoorTemp;
 
@@ -1285,7 +1300,7 @@ namespace Celsius
             if (thisTick % 180 == 1) {
                 var str = $"tick {thisTick}: runs: {modelRuns}/{collectRuns} {modelMsecEma.ema:F2} / {collectorMsecEma.ema:F2} ms ";
                 str += $"periods: {modelTickEma.ema:F2} / {collectorTickEma.ema:F2} ticks ";
-                str += $"mct {mapComponentTickMsecEma.ema:F2} ms";
+                str += $"mct {mapComponentTickMsecEma.ema:F2} ms modelStepEma {modelStepEma.ema:F3}";
                 log.Info(str);
                 log.Spam($"outdoor={map.mapTemperature.OutdoorTemp} seasonal={map.mapTemperature.SeasonalTemp}");
             }
@@ -1338,12 +1353,6 @@ namespace Celsius
         }
 
         public float GetTerrainTemperature(int index) => terrainTemperatures[index];
-
-        public ThermalProps GetThermalPropertiesAt(int index) {
-            ThermalProps props = readCTProps[index];
-            return props == null ? ThermalProps.Air : props;
-        }
-
         public void PushHeat(int index, float energy) => writeCannedHeat.Add(new CannedHeat() { at = index, energy = energy });
         public void PushHeat(IntVec3 cell, float energy) => PushHeat(map.cellIndices.CellToIndex(cell), energy);
     }

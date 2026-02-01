@@ -120,7 +120,11 @@ namespace Celsius
                     postfix: new HarmonyMethod(type.GetMethod("Building_SpawnSetup")));
                 harmony.Patch(
                     AccessTools.Method("Verse.Building:DeSpawn"),
-                    postfix: new HarmonyMethod(type.GetMethod("Building_DeSpawn")));
+                    prefix: new HarmonyMethod(type.GetMethod("Building_DeSpawn")));
+                harmony.Patch(
+                    AccessTools.Method("Verse.Building:Destroy"),
+                    prefix: new HarmonyMethod(type.GetMethod("Building_Destroy")));
+
 
                 MethodInfo method = AccessTools.Method("VanillaVehiclesExpanded.GarageDoor:SpawnGarage");
                 if (method != null)
@@ -130,7 +134,7 @@ namespace Celsius
             }
             catch (Exception e)
             {
-                LC.Error("ApplyHarmonyPatches", $"Harmony patch failed: {e.ToString()}");
+                LC.Error("ApplyHarmonyPatches", $"Patching failed: {e.ToString()}");
                 return false;
 
             }
@@ -464,10 +468,18 @@ namespace Celsius
                 }
             }
         }
-        public static void Building_DeSpawn(Building __instance) {
+        public static bool Building_DeSpawn(Building __instance) {
             if (__instance.Map.TryGetTemprComp(out TemperatureInfo tinfo)) {
                 tinfo.Notify_BuildingDespawned(__instance);
             }
+            return true;
+        }
+
+        public static bool Building_Destroy(Building __instance) {
+            if (__instance.Map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                tinfo.Notify_BuildingDestroyed(__instance);
+            }
+            return true;
         }
 
         // Adds heat push to ritual fires
