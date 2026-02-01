@@ -1,30 +1,37 @@
 # Thermal data definitions.
 
-ThermalProps  :  just a class. 
 
 
-StuffThermalProperties : DefModExtension
-    - stores stuff-related data:
-        - volumetricHeatCapacity
-        - insulationFactor
+## StuffThermalProperties : DefModExtension
 
-ThingThermalProperties : DefModExtension
-    - stores thing-related data:
-        - heatCapacity  for non-stuffables
-        - volume        for stuffables
-        - insulation (defaults to 1)
-        - airflowWhenOpen
-        - airflow 
+ - stores stuff-related data:
+    - volumetricHeatCapacity
+    - insulationFactor
+
+## ThingThermalProperties : DefModExtension
+
+ - stores thing-related data:
+    - heatCapacity  for non-stuffables
+    - volume        for stuffables
+    - insulation (defaults to 1)
+    - airflowWhenOpen
+    - airflow 
     
-TerrainThermalProperties : DefModExtension
-        - heatCapacity
-        - insulation
-        - direction: freeze/melt
-        - turnsInto TerrainDef ref
-        - transition temperature
-        
+## TerrainThermalProperties : DefModExtension
 
-## Data defined in mods (Celsius + CelsiusPatches):
+ - heatCapacity
+ - insulation
+ - direction: freeze/melt
+ - turnsInto TerrainDef ref
+ - transition temperature
+        
+## statBases of ThingDefs
+
+ - Celsius_IgnitionTemperature in statBases
+ - Celsius_IgnitionTemperature in stuffProps.statOffsets (what is this?) 
+
+both are the same for some reason. TODO: document why and what for there are two values
+
 
 Garwel note:
 
@@ -50,12 +57,12 @@ ModExtension class Celsius.TerrainThermalProperties
 
 #### ModExtension class Celsius.ThingThermalProperties
  
-- heatCapacity     : sometimes overriden to the tune of 3-17 for things,
-                    500 for mineable (!!). Ignored for stuffables.
-- insulation       : default 1.0 typical 3-9
-- volume           : under 1.0 everywhere, mostly 0.01-ish except 0.5 for minable and 10 in a haywall.??
-- airflow          : normalized 0.0 - 1.0; default 0
-- airflowWhenOpen
+ - heatCapacity     : sometimes overriden to the tune of 3-17 for things,
+                      500 for mineable (!!). Ignored for stuffables.
+ - insulation       : default 1.0 typical 3-9
+ - volume           : under 1.0 everywhere, mostly 0.01-ish except 0.5 for minable and 10 in a haywall.??
+ - airflow          : normalized 0.0 - 1.0; default 0
+ - airflowWhenOpen
   
 #### ModExtension class Celsius.StuffThermalProperties
 
@@ -63,33 +70,35 @@ ModExtension class Celsius.TerrainThermalProperties
  - insulationFactor  : normalized 0.0 - 1.0
 
 
-## ThermalProps
+## ThermalProps  
 
-    is what the model uses for cells. 
+Just a class. It's what lives in caches and Celsius internal map layer.
+
+
 
 in before using airflow value :
 
 float GetInsulationWithAirflow(float insulation, float airflow) => Mathf.Lerp(insulation, 1, airflow);
 this.insulation = TemperatureUtility.GetInsulationWithAirflow(insulation, airflow);
 
- this actually increases the resulting insulation value .. counterintuitive heh
+this actually increases the resulting insulation value .. counterintuitive heh
+and this value is not used for conductivity.
 
 Stuff properties are applied in a more or less straightforward way:
 
 heatCapacity = Mathf.Lerp(1, stuffProps.volumetricHeatCapacity, volume)
 insulation = insulation * stuffProps.insulationFactor
 
-    additional params:
+additional params:
 
 conductivity = Mathf.Pow(Settings.ConductivityPowerBase, insulation);
 
 heatflow = heatCapacity * conductivity / Settings.ConvectionConductivityEffect;
 
-    - heatflow
-
 ### Air is the default case for cells otherwise left undefined:
+
  - heatCapacity = 1.0
- - volume       = 1.0
+ - insulation   = 1.0
  - airflow      = 1.0
  - isAir        = true // why this is even needed?
 
@@ -110,12 +119,3 @@ heatflow = heatCapacity * conductivity / Settings.ConvectionConductivityEffect;
 7. Setting in settings disables only freezing into IceNine.
 
  
-### statBases of ThingDefs
-
- - Celsius_IgnitionTemperature in statBases
- - Celsius_IgnitionTemperature in stuffProps.statOffsets (what is this?) 
-
-
- 
-both are the same for some reason. TODO: document why and what for there are two values
-
