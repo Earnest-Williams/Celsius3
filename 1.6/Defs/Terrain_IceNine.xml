@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Defs>
-  <TerrainDef ParentName="Ice" Name="IceNine">
+  <TerrainDef ParentName="Ice">
     <!-- an ice that does actually melt : default ice for vanilla waters -->
     <defName>IceNine</defName>
     <label>Ice Nine</label>
@@ -10,7 +10,16 @@
             <insulation>5.5</insulation>
             <phaseTransition>Melt</phaseTransition>
             <transitionTemperature>0</transitionTemperature>
+            <turnsInto>CelsiusFlop</turnsInto>
         </li>
     </modExtensions>
+  </TerrainDef>
+  <TerrainDef>
+        <defName>CelsiusFlop</defName>
+        <label>Internal Celsius terrain</label>
+        <texturePath>Terrain/Surfaces/Underwall</texturePath>
+        <edgeType>Hard</edgeType>
+        <renderPrecedence>0</renderPrecedence>
+        <fertility>0</fertility>
   </TerrainDef>
 </Defs>

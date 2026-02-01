@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<Patch>
+	<Operation Class="PatchOperationAddModExtension">
+		<xpath>Defs/ThingDef[defName="OrnateDoor"]</xpath>
+		<value>
+			<li Class="Celsius.ThingThermalProperties">
+				<heatCapacity>5</heatCapacity>
+				<volume>0.0075</volume>
+				<insulation>4</insulation>
+				<airflowWhenOpen>0.75</airflowWhenOpen>
+			</li>
+		</value>
+	</Operation>
+	<Operation Class="PatchOperationFindMod">
+		<mods>
+			<li>Anomaly</li>
+		</mods>
+		<match Class="PatchOperationSequence">
+			<operations>
+				<!--Fleshmass-->
+				<!--<li Class="PatchOperationAdd">
+					<xpath>Defs/ThingDef[defName="Fleshmass"]/comps</xpath>
+					<value>
+						<li Class="CompProperties_HeatPusher">
+							<heatPerSecond>10</heatPerSecond>
+							<heatPushMaxTemperature>38</heatPushMaxTemperature>
+						</li>
+					</value>
+				</li>-->
+				<li Class="PatchOperationAddModExtension">
+					<xpath>Defs/ThingDef[defName="Fleshmass"]</xpath>
+					<value>
+						<li Class="Celsius.ThingThermalProperties">
+							<heatCapacity>5</heatCapacity>
+							<insulation>3</insulation>
+						</li>
+					</value>
+				</li>
+				<li Class="PatchOperationAddModExtension">
+					<xpath>Defs/ThingDef[defName="FleshSack"]</xpath>
+					<value>
+						<li Class="Celsius.ThingThermalProperties">
+							<heatCapacity>5</heatCapacity>
+							<insulation>3</insulation>
+						</li>
+					</value>
+				</li>
+				<li Class="PatchOperationAddModExtension">
+					<xpath>Defs/ThingDef[defName="FleshmassHeart"]</xpath>
+					<value>
+						<li Class="Celsius.ThingThermalProperties">
+							<heatCapacity>5</heatCapacity>
+							<insulation>3</insulation>
+						</li>
+					</value>
+				</li>
+				<li Class="PatchOperationAddModExtension">
+					<xpath>Defs/ThingDef[defName="Fleshbulb"]</xpath>
+					<value>
+						<li Class="Celsius.ThingThermalProperties">
+							<heatCapacity>5</heatCapacity>
+							<insulation>3</insulation>
+						</li>
+					</value>
+				</li>
+				<li Class="PatchOperationAddModExtension">
+					<xpath>Defs/ThingDef[defName="NerveBundle"]</xpath>
+					<value>
+						<li Class="Celsius.ThingThermalProperties">
+							<heatCapacity>5</heatCapacity>
+							<insulation>3</insulation>
+						</li>
+					</value>
+				</li>
+				<li Class="PatchOperationAddModExtension">
+					<xpath>Defs/ThingDef[defName="FleshmassSpitter"]</xpath>
+					<value>
+						<li Class="Celsius.ThingThermalProperties">
+							<heatCapacity>5</heatCapacity>
+							<insulation>3</insulation>
+						</li>
+					</value>
+				</li>
+				<!--Misc-->
+				<li Class="PatchOperationAddModExtension">
+					<xpath>Defs/ThingDef[defName="SecurityDoor"]</xpath>
+					<value>
+						<li Class="Celsius.ThingThermalProperties">
+							<heatCapacity>6</heatCapacity>
+							<volume>0.0075</volume>
+							<insulation>5</insulation>
+							<airflowWhenOpen>0.75</airflowWhenOpen>
+						</li>
+					</value>
+				</li>
+				<li Class="PatchOperationAddModExtension">
+					<xpath>Defs/ThingDef[defName="Bioferrite"]</xpath>
+					<value>
+						<li Class="Celsius.StuffThermalProperties">
+							<volumetricHeatCapacity>900</volumetricHeatCapacity>
+							<insulationFactor>.8</insulationFactor>
+						</li>
+					</value>
+				</li>
+			</operations>
+		</match>
+	</Operation>
+</Patch>

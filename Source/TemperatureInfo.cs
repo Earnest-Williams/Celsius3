@@ -494,6 +494,9 @@ namespace Celsius
         }
 
         // remove all Ice9 from the map so that the mod can be removed.
+        // FIXME: do this via the terrainsChanged bag / ApplyChanges().
+        // or else destruction of stuff built on Ice9 is not happening,
+        // SetTerrain() is not called, etc.
         public void MeltIceNine() {
             var log = new LogContext($"MeltIceNine({map})");
 
@@ -501,7 +504,7 @@ namespace Celsius
                 var index = kv.Key;
                 var tdef = kv.Value;
 
-                if (map.terrainGrid.topGrid[index] == CelsiusIceNine) {
+                if (map.terrainGrid.topGrid[index] != CelsiusIceNine) {
                     log.Error($"cell {index} in tflops, but top terrain is {map.terrainGrid.topGrid[index]}, not IceNine");
                     continue;
                 }
@@ -1131,11 +1134,14 @@ namespace Celsius
                 if (nextTerrain == null) {
                     if (tc.dir == PTDir.Freeze) {
                         nextTerrain	= CelsiusIceNine;
-                    } else { // no turnsInto, no flop. melt into... nothing?
+                    } else if (tc.dir == PTDir.Melt) { // no turnsInto, no flop. melt into... nothing?
                         // this is hard mod error. better make it very obvious.
                         // TODO: put up a scary message.
                         // (remember, vanilla ice does not melt any more, this should be unreachable)
-                        log.Error($"melt transition target neither defined nor found.");
+                        log.Error($"melt transition target for {terrain} neither defined nor found, defaulting to {CelsiusSlade}.");
+                        nextTerrain = CelsiusSlade;
+                    } else { // unpossible, or should be.
+                        log.Error($"phase transition type {tc.dir}? WTF?");
                         nextTerrain = CelsiusSlade;
                     }
                 }
@@ -1171,7 +1177,7 @@ namespace Celsius
                 //
                 if (tc.dir == PTDir.Freeze) {
                     // insert fun effects of pawns freezing into snotonite.
-                } else {
+                } else if (tc.dir == PTDir.Melt) {
                     // fun effects of pawns drowning in molten snot.
                     // IceNine is limited to walkable+shallow, so nothing drowns.
                     // TODO: make it messages/notifies, not just Log.
@@ -1222,6 +1228,8 @@ namespace Celsius
                         }
                         // We're out of fun to impose on this thing, let it live.
                     }
+                } else { // unpossible, or should be.
+                    log.Error($"phase transition type {tc.dir} to {nextTerrain}. WTF?");
                 }
                 //
                 // snow and sand removal is handled in DoTerrainChangedEffects() called from SetTerrain()

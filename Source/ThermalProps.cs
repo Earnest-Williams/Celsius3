@@ -40,7 +40,7 @@ namespace Celsius
             this.isAir = isAir;
         }
 
-        public ThermalProps(TerrainThermalProperties ttp) : this(ttp.heatCapacity, ttp.insulation, ttp.airflow, false) {
+        public ThermalProps(TerrainThermalProperties ttp) : this(ttp.heatCapacity, ttp.insulation, airflow: 0.0f, isAir: false) {
             // airflow usually undef for terrains. hmm,
             phaseTransition = ttp.phaseTransition;
             transitionTemperature = ttp.transitionTemperature;
@@ -77,8 +77,13 @@ namespace Celsius
 
     public class StuffThermalProperties : DefModExtension
     {
-        public float volumetricHeatCapacity = 1000;
-        public float insulationFactor = 1;
+        public float volumetricHeatCapacity = float.NaN;
+        public float insulationFactor = float.NaN;
+
+        public override IEnumerable<string> ConfigErrors() {
+            if (float.IsNaN(volumetricHeatCapacity)) { yield return "volumetricHeatCapacity is not set; defaulting to 1000.0"; }
+            if (float.IsNaN(insulationFactor)) { yield return "insulationFactor is not set; defaulting to 1.0"; }
+        }
 
         public override string ToString() => $"Volumetric heat capacity: {volumetricHeatCapacity}/m3. InsulationFactor: {insulationFactor:P1}.";
     }
@@ -86,12 +91,23 @@ namespace Celsius
     public class ThingThermalProperties : DefModExtension
     {
         public float heatCapacity = float.NaN;
-        public float volume;
-        public float insulation = 1;
-        public float airflow;
-        public float airflowWhenOpen;
+        public float volume = float.NaN;
+        public float insulation = float.NaN;
+        public float airflow = 0;
+        public float airflowWhenOpen = 0;
 
         public ThingThermalProperties() { }
+
+        public override IEnumerable<string> ConfigErrors() {
+            if (float.IsNaN(insulation)) {
+                insulation = 1;
+                yield return "insulation is not set; defaulting to 1.0";
+            }
+            if (float.IsNaN(heatCapacity) && float.IsNaN(volume)) {
+                heatCapacity = 1;
+                yield return "neither heatCapacity nor volume set; defaulting to heatCapacity=1.0";
+            }
+        }
 
         public override string ToString() => $"Heat capacity: {heatCapacity:F1}. Volume: {volume:F3} m^3. Insulation: {insulation:F1}. Airflow: {airflow:P0}/{airflowWhenOpen:P0}.";
 
@@ -99,26 +115,41 @@ namespace Celsius
 
     public enum PhaseTransitionType
     {
-        None = 0,
+        NotSet = 0,
+        None,
         Freeze,
         Melt
     }
 
-    public class TerrainThermalProperties : ThingThermalProperties
-    {
-        public PhaseTransitionType phaseTransition;
-
+    public class TerrainThermalProperties : DefModExtension {
+        public float heatCapacity = float.NaN;
+        public float insulation = float.NaN;
         public float transitionTemperature = float.NaN;
-
-        public TerrainDef turnsInto;
+        public PhaseTransitionType phaseTransition = PhaseTransitionType.NotSet;
+        public TerrainDef turnsInto = null;
 
         public override IEnumerable<string> ConfigErrors()
         {
-            if (phaseTransition != PhaseTransitionType.None && float.IsNaN(transitionTemperature))
-            {
-                phaseTransition = PhaseTransitionType.None;
-                yield return $"transitionTemperature is not set.";
+            if (phaseTransition != PhaseTransitionType.NotSet
+                && phaseTransition != PhaseTransitionType.None) {
+                if (float.IsNaN(transitionTemperature)) {
+                    phaseTransition = PhaseTransitionType.None;
+                    yield return $"transitionTemperature is not set.";
+                }
+                if (turnsInto == null) {
+                    phaseTransition = PhaseTransitionType.None;
+                    yield return $"turnsInto is not set.";
+                }
             }
+            if (float.IsNaN(insulation)) {
+                insulation = 1.0f;
+                yield return "insulation is not set; defaulting to 1.0";
+            }
+            if (float.IsNaN(heatCapacity)) {
+                heatCapacity = 1000.0f;
+                yield return "heatCapacity is not set; defaulting to 1000.0";
+            }
+            if (float.IsNaN(insulation)) { yield return "insulation is not set"; }
         }
 
         public override string ToString() =>
@@ -208,6 +239,10 @@ namespace Celsius
             thingHits = 0;
             thingMisses = 0;
             flushMutex.ReleaseMutex();
+        }
+
+        public void resolveTerrainDefReferences() {
+            // TODO: ...
         }
 
         public void LogStats() {

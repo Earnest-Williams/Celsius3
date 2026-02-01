@@ -27,3 +27,8 @@ I would not recommend using this update on important saves/playthroughs - while 
 Please help with testing, bugreports and suggestions are very welcome.
 
 This project is hosted at [https://codeberg.org/lxnt/Celsius3](https://codeberg.org/lxnt/Celsius3)
+
+This project intergates Anomaly and Odyssey TerrainDef patches from
+[Celsius Patches](https://steamcommunity.com/sharedfiles/filedetails/?id=3072081544) mod by
+[albinodog](https://steamcommunity.com/profiles/76561198078199193). Many thanks.
+
