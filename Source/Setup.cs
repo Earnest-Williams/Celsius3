@@ -136,9 +136,37 @@ namespace Celsius
             {
                 LC.Error("ApplyHarmonyPatches", $"Patching failed: {e.ToString()}");
                 return false;
-
             }
+            // try to unpatch what Insulation (Continued) patched, since those patches do nothing useful now
+            UnpatchInsulation();
+            try {
+                harmony.UnpatchAll("com.Pelador.Rimworld.Insulation");
+            } catch (Exception e) {
+                LC.Error("ApplyHarmonyPatches", $"Insulation unpatch failed: {e.ToString()}");
+            }
+
             return IsHarmonyPatched;
+        }
+
+        static void UnpatchInsulation() {
+            var log = new LogContext("UnpatchInsulation");
+            var original = typeof(RoomTempTracker).GetMethod("DeepEqualizationTempChangePerInterval",
+                            BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+            if (original == null) {
+                log.Info($" no method Verse.RoomTempTracker.DeepEqualizationTempChangePerInterval found.");
+                return;
+            }
+            var patches = Harmony.GetPatchInfo(original);
+            if (patches is null) return;
+            foreach (var patch in patches.Postfixes) {
+                log.Spam($"owner: {patch.owner}");
+                if (patch.owner == "com.Pelador.Rimworld.Insulation") {
+                    harmony.UnpatchAll("com.Pelador.Rimworld.Insulation");
+                    log.Info("removed Insulation Harmony patches.");
+                    return;
+                }
+            }
+
         }
 
         public static void RemoveHarmonyPatches() => harmony.UnpatchAll("Garwel.Celsius");
