@@ -181,20 +181,25 @@ namespace Celsius {
 
     public class TweakWindow :  RimWorld.MainTabWindow
     {
+        Dialog_ModSettings dms;
+
         public TweakWindow() {
-            //forcePause = true;
+            //forcePause = true;Dialog_ModSettings dms;
+            dms = new Dialog_ModSettings(CelsiusMod.getModHandle());
         }
 
         public override void DoWindowContents(Rect inRect) {
-            SettingsWindow.DoWindowContents(inRect, mainTabMode: true);
+            //SettingsWindow.DoWindowContents(inRect, mainTabMode: true);
+            // dms looks nicer
+            dms.DoWindowContents(inRect);
         }
 
         public override void PreOpen() {
             base.PreOpen();
 
             windowRect.width  = UI.screenWidth > 512 ? 512 : UI.screenWidth;
-            windowRect.height = UI.screenHeight - 64;
-            windowRect.y = (float)(UI.screenHeight - 64) - windowRect.height;
+            windowRect.height = UI.screenHeight - 35;
+            windowRect.y = (float)(UI.screenHeight - 35) - windowRect.height;
         }
     }
 
