@@ -241,10 +241,6 @@ namespace Celsius
             flushMutex.ReleaseMutex();
         }
 
-        public void resolveTerrainDefReferences() {
-            // TODO: ...
-        }
-
         public void LogStats() {
             log = new LogContext("ThermalsCache");
             log.Info($"terrainCache.Count = {terrainCache.Count}");
