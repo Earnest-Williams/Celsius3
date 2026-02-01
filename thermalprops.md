@@ -100,14 +100,14 @@ heatflow = heatCapacity * conductivity / Settings.ConvectionConductivityEffect;
 1. Phase transitions are defined as above or they don't happen, no exceptions.
 2. Phase transition of type None is not happening either, temperature is ignored.
 3. turnsInto contains target TerrainDef's defName
-4. Reserved defName of _previous means "into whatever terrain there was before
+4. Reserved turnsInto of CelsiusFlop means "whatever terrain was there before"
     - reserved for Celsius-internal IceNine terrain.
     - expects the target terrain in terrainFlops layer on melt.
     - thus should not be generated into maps as there is no way to add to terrainFlops
-5. On def-load turnsInto is resolved into TerrainDefs except for _previous which is resolved into nullref.
-6. When anything with turnsInto of IceNine freezes, it gets noted in terrainFlops.
-7. When IceNine melts, replacement terrain is fetched from terrainFlops.
-8. Setting in settings disables only freezing into IceNine.
+      on generation.
+5. When anything with turnsInto of IceNine freezes, it gets noted in terrainFlops.
+6. When IceNine melts, replacement terrain is fetched from terrainFlops.
+7. Setting in settings disables only freezing into IceNine.
 
  
 ### statBases of ThingDefs
