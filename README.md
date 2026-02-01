@@ -30,5 +30,5 @@ This project is hosted at [https://codeberg.org/lxnt/Celsius3](https://codeberg.
 
 This project intergates Anomaly and Odyssey TerrainDef patches from
 [Celsius Patches](https://steamcommunity.com/sharedfiles/filedetails/?id=3072081544) mod by
-[albinodog](https://steamcommunity.com/profiles/76561198078199193). Many thanks.
+[albinogod](https://steamcommunity.com/profiles/76561198078199193). Many thanks.
 
