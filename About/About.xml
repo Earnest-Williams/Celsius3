@@ -1,15 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 
 <ModMetaData>
-	<name>Celsius</name>
+	<name>Celsius Dev</name>
 	<author>Garwel</author>
 	<url>https://codeberg.org/lxnt/Celsius3</url>
-	<packageId>Garwel.Celsius</packageId>
+	<packageId>Garwel.Celsius.Dev</packageId>
     <modVersion>2.7</modVersion>
 	<supportedVersions>
 		<li>1.6</li>
 	</supportedVersions>
-	<description>Celsius adds realistic simulation of thermodynamics to the game:
+    <incompatibleWith>
+        <li>Garwel.Celsius</li>
+    </incompatibleWith>
+	<description>Develelopment version.
+
+Celsius adds realistic simulation of thermodynamics to the game:
 
 - Cell-accurate temperature simulation(as opposed to vanilla's room-level abstraction). Geysers and fires warm surrounding air, mountains and large bodies of water keep a more constant temperature etc.
 
@@ -37,6 +42,9 @@
 		<li>Ludeon.RimWorld</li>
 		<li>Ludeon.RimWorld.Royalty</li>
 		<li>Ludeon.RimWorld.Ideology</li>
+        <li>Ludeon.RimWorld.Biotech</li>
+        <li>Ludeon.RimWorld.Anomaly</li>
+        <li>Ludeon.RimWorld.Odyssey</li>
 		<li>imranfish.xmlextensions</li>
 		<li>sarg.alphaanimals</li>
 		<li>mlie.insulation</li>
