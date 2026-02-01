@@ -494,9 +494,6 @@ namespace Celsius
         }
 
         // remove all Ice9 from the map so that the mod can be removed.
-        // FIXME: do this via the terrainsChanged bag / ApplyChanges().
-        // or else destruction of stuff built on Ice9 is not happening,
-        // SetTerrain() is not called, etc.
         public void MeltIceNine() {
             var log = new LogContext($"MeltIceNine({map})");
 
@@ -504,14 +501,17 @@ namespace Celsius
                 var index = kv.Key;
                 var tdef = kv.Value;
 
-                if (map.terrainGrid.topGrid[index] != CelsiusIceNine) {
+                if (map.terrainGrid.topGrid[index] == CelsiusIceNine) {
                     log.Error($"cell {index} in tflops, but top terrain is {map.terrainGrid.topGrid[index]}, not IceNine");
                     continue;
                 }
-                map.terrainGrid.topGrid[index] = kv.Value;
+                terrainsChanged.Add(new TerrainChange() { at = index, dir = PTDir.Melt, addSnow = float.NaN } );
             }
             terrainFlops.Clear();
-            log.Info($"IceNine removed from the map.");
+            Settings.FreezingAndMeltingEnabled = true;
+            ApplyTerrainEffects();
+            Settings.FreezingAndMeltingEnabled = false;
+            log.Info($"IceNine removed from the map, freeze/melt disabled.");
         }
 
         void ConvertIceToIceNine() {
@@ -1127,9 +1127,13 @@ namespace Celsius
                         log.Warn($"both turnsInto: {nextTerrain} and a record in flops: {flopDef}, using turnsInto.");
                         terrainFlops.Remove(tc.at);
                     } else { // aha, here we go.
+                        if (Settings.FreezingAndMeltingEnabled == false && flopDef == CelsiusIceNine) {
+                            continue;
+                        }
                         nextTerrain = flopDef;
                     }
                 }
+
 
                 if (nextTerrain == null) {
                     if (tc.dir == PTDir.Freeze) {
