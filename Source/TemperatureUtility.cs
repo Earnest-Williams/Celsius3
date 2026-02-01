@@ -131,8 +131,15 @@ namespace Celsius
         {
             // props is neigh cell.  interactingTemperature neigh temp
             // aiflow is this cell airflow.
+            //
+            // interactingTemperature = temperatures[neighbourIndex],
+            // props = GetThermalPropertiesAt(neighbourIndex)
+            // airflow   =  localProps.airflow
+            //
+
 
             // Air has heat capacity = 1 and conductivity = 1
+            // this below obscurely shortcuts the case when both cells are air.
             if (AlmostZero(airflow - 1.0f) && props.isAir)
             {
                 heatFlow += /* 1.0f  * */ modelStepFactor; // that magic 1.0 was here initially as heatFlow++

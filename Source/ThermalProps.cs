@@ -105,7 +105,7 @@ namespace Celsius
             }
             if (float.IsNaN(heatCapacity) && float.IsNaN(volume)) {
                 heatCapacity = 1;
-                yield return "neither heatCapacity nor volume set; defaulting to heatCapacity=1.0";
+                yield return "neither heatCapacity nor volume set; defaulting to 1.0";
             }
         }
 
@@ -134,11 +134,11 @@ namespace Celsius
                 && phaseTransition != PhaseTransitionType.None) {
                 if (float.IsNaN(transitionTemperature)) {
                     phaseTransition = PhaseTransitionType.None;
-                    yield return $"transitionTemperature is not set.";
+                    yield return $"transitionTemperature is not set, setting PhaseTransitionType to None.";
                 }
                 if (turnsInto == null) {
                     phaseTransition = PhaseTransitionType.None;
-                    yield return $"turnsInto is not set.";
+                    yield return $"turnsInto is not set, setting PhaseTransitionType to None.";
                 }
             }
             if (float.IsNaN(insulation)) {
@@ -149,7 +149,6 @@ namespace Celsius
                 heatCapacity = 1000.0f;
                 yield return "heatCapacity is not set; defaulting to 1000.0";
             }
-            if (float.IsNaN(insulation)) { yield return "insulation is not set"; }
         }
 
         public override string ToString() =>
@@ -274,7 +273,7 @@ namespace Celsius
             // and for non-stuffable  st_SH = th_SH
             //   must result in unique cacheKey.
 
-            // the defauls below cover both IsStuff and non-stuffable.
+            // the defaults below cover both IsStuff and non-stuffable.
             Def thingDef = thing.def;
             Def stuffDef = thingDef;
 
