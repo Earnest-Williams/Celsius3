@@ -11,15 +11,29 @@ namespace Celsius
 
     public static class SettingsWindow {
         static bool flushButtonPressed = false;
-        static bool resetButtonPressed = false;
         static bool meltIceButtonPressed = false;
         static bool colorsResetButtonPressed = false;
+        static bool modelResetButtonPressed = false;
+
+        static TemperatureInfo tinfo = null;
 
         static Vector2 scrollPosition = new Vector2();
         static Rect viewRect;
         static Listing_Standard content = new Listing_Standard();
 
+        public static bool spammed = false;
+
         public static void DoWindowContents(Rect rect, bool mainTabMode) {
+            // I have no idea what I'm doing here, but these ui struggles
+            // take entirely too much time.
+            if (!spammed) { viewRect = new Rect(0, 0, 0, 0); spammed = true; }
+            if (mainTabMode) {
+                Text.Font = GameFont.Medium;
+                Widgets.Label(new Rect(0f, 0f, rect.width - 150f - 17f, 35f), "Celsius");
+                Text.Font = GameFont.Small;
+                rect = new Rect(0f, 40f, rect.width, rect.height - 40f );
+            }
+
             if (viewRect.height <= 0) {
                 viewRect = new Rect(0, 0, rect.width - GenUI.ScrollBarWidth, 0);
             }
@@ -71,21 +85,21 @@ namespace Celsius
 
                 float n;
                 content.Label("Celsius_Settings_T_MinMapped".Translate(T_MinMapped.ToStringTemperature()));
-                n = content.Slider(T_MinMapped, -75, 233);
+                n = content.Slider(T_MinMapped, -75, 100);
                 if (!Neareq(n, T_MinMapped)) { T_MinMapped = n; TemperatureUtility.ColorSettingsChanged(); }
 
                 content.Label("Celsius_Settings_T_MinComfort".Translate(T_MinComfort.ToStringTemperature()));
-                n = content.Slider(T_MinComfort, -75, 233);
+                n = content.Slider(T_MinComfort, -75, 100);
                 if (n < T_MinMapped) n = T_MinMapped;
                 if (!Neareq(n, T_MinComfort)) { T_MinComfort = n; TemperatureUtility.ColorSettingsChanged(); }
 
                 content.Label("Celsius_Settings_T_MaxComfort".Translate(T_MaxComfort.ToStringTemperature()));
-                n = content.Slider(T_MaxComfort, -75, 233);
+                n = content.Slider(T_MaxComfort, -75, 100);
                 if (n < T_MinComfort) n = T_MinComfort;
                 if (!Neareq(n, T_MaxComfort)) { T_MaxComfort = n; TemperatureUtility.ColorSettingsChanged(); }
 
                 content.Label("Celsius_Settings_T_MaxMapped".Translate(T_MaxMapped.ToStringTemperature()));
-                n = content.Slider(T_MaxMapped, -75, 233);
+                n = content.Slider(T_MaxMapped, -75, 100);
                 if (n < T_MaxComfort) n = T_MaxComfort;
                 if (!Neareq(n, T_MaxMapped)) { T_MaxMapped = n; TemperatureUtility.ColorSettingsChanged(); }
 
@@ -129,6 +143,12 @@ namespace Celsius
             HeatPushMultiplier = content.Slider(HeatPushMultiplier, 0, 2).RoundWithPrecision(0.1f);
             HeatPushEffect = HeatPushEffect_Base * HeatPushMultiplier;
 
+            content.Label("Celsius_Settings_CollectInterval".Translate(TicksPerCollect), tooltip: "Celsius_Settings_CollectInterval_tooltip".Translate(TicksPerCollect_Default));
+            int i = (int)content.Slider(TicksPerCollect, 1, 120).RoundWithPrecision(1);
+            if (i > TicksPerUpdate) {
+                TicksPerCollect = i;
+            }
+
             if (mainTabMode) {
                 content.Gap();
                 if (content.ButtonText("Celsius_Settings_FlushCaches".Translate())) {
@@ -141,33 +161,46 @@ namespace Celsius
                     }
                 }
             }
-
-            content.Gap();
-            content.CheckboxLabeled("Celsius_Settings_ForceIceConversion".Translate(), ref CompatForceIceConversion, "Celsius_Settings_ForceIceConversion_tooltip".Translate());
-
-            content.CheckboxLabeled("Celsius_Settings_DebugMode".Translate(), ref DebugMode, "Celsius_Settings_DebugMode_tooltip".Translate());
-
-            content.Gap();
-            if (content.ButtonText("Celsius_Settings_ResetDefault".Translate())) {
-                resetButtonPressed = true;
+            if (content.ButtonText("Celsius_Settings_ResetModel".Translate())) {
+                modelResetButtonPressed = true;
             } else {
-                if (resetButtonPressed) {
-                    Reset();
-                    UpdateMainTabButtonVisibility();
-                    UpdateAutoignition();
+                if (modelResetButtonPressed) {
+                    ResetModel();
                     TemperatureUtility.FlushCaches();
-                    resetButtonPressed = false;
+                    modelResetButtonPressed = false;
                 }
             }
 
             content.Gap();
-            if (content.ButtonText("Celsius_Settings_MeltIceNine".Translate())) {
-                meltIceButtonPressed = true;
-            } else {
-                if (meltIceButtonPressed) {
-                    TemperatureUtility.MeltIceNine();
-                    meltIceButtonPressed = false;
+            content.CheckboxLabeled("Celsius_Settings_DebugMode".Translate(), ref DebugMode, "Celsius_Settings_DebugMode_tooltip".Translate());
+
+            if (!mainTabMode) {
+                content.Gap();
+                if (content.ButtonText("Celsius_Settings_MeltIceNine".Translate())) {
+                    meltIceButtonPressed = true;
+                } else {
+                    if (meltIceButtonPressed) {
+                        TemperatureUtility.MeltIceNine();
+                        meltIceButtonPressed = false;
+                    }
                 }
+                content.Gap();
+                content.CheckboxLabeled("Celsius_Settings_ForceIceConversion".Translate(), ref CompatForceIceConversion, "Celsius_Settings_ForceIceConversion_tooltip".Translate());
+            }
+
+            if (mainTabMode && TemperatureUtility.TryGetTemprComp(Find.CurrentMap, out tinfo)) {
+                var mms = tinfo.modelMsecEma.ema;
+                var mt  = tinfo.modelTickEma.ema;
+                var cms = tinfo.collectorMsecEma.ema;
+                var ct  = tinfo.collectorTickEma.ema;
+                var mst = tinfo.modelStepEma.ema;
+
+                content.Label($"Model run {mms:F1} ms  period {mt:F1} ticks; stepFactor {mst:F3}");
+                content.Label($"Collector run {cms:F1} ms period {ct:F1} ticks.");
+
+                TemperatureUtility.thermalsCache.Counts(out int things, out int terrains, out int terrFlam, out int whitelist);
+                content.Label($"Caches: ThermalProps {things} defWhitelist {whitelist}");
+                content.Label($"TerrainDefs {terrains} Terrain flammability {terrFlam}");
             }
 
             viewRect.height = content.MaxColumnHeightSeen + 40;
@@ -181,25 +214,24 @@ namespace Celsius {
 
     public class TweakWindow :  RimWorld.MainTabWindow
     {
-        Dialog_ModSettings dms;
-
         public TweakWindow() {
             //forcePause = true;Dialog_ModSettings dms;
-            dms = new Dialog_ModSettings(CelsiusMod.getModHandle());
+            //dms = new Dialog_ModSettings(CelsiusMod.getModHandle());
+            SettingsWindow.spammed = false;
         }
 
         public override void DoWindowContents(Rect inRect) {
-            //SettingsWindow.DoWindowContents(inRect, mainTabMode: true);
+            SettingsWindow.DoWindowContents(inRect, mainTabMode: true);
             // dms looks nicer
-            dms.DoWindowContents(inRect);
+            //dms.DoWindowContents(inRect);
         }
 
         public override void PreOpen() {
             base.PreOpen();
 
             windowRect.width  = UI.screenWidth > 512 ? 512 : UI.screenWidth;
-            windowRect.height = UI.screenHeight - 35;
-            windowRect.y = (float)(UI.screenHeight - 35) - windowRect.height;
+            windowRect.height = UI.screenHeight - 36;
+            windowRect.y = (float)(UI.screenHeight - 36) - windowRect.height;
         }
     }
 

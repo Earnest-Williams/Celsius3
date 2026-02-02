@@ -199,6 +199,13 @@ namespace Celsius
         public float MissRatio => (float)((double)thingMisses/(double)(thingHits+thingMisses));
         public int Count => thingCache.Count;
 
+        public void Counts(out int things, out int terrains, out int terrFlam, out int whitelist) {
+            things = thingCache.Count;
+            terrains = terrainCache.Count;
+            terrFlam  = terrainFlammability.Count;
+            whitelist = defWhitelist.Count;
+        }
+
         private static Mutex flushMutex = new Mutex();
 
         ~ThermalsCache() { flushMutex.Dispose(); }

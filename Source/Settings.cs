@@ -13,6 +13,7 @@ namespace Celsius
         public static bool AutoignitionEnabled;
         public static bool PawnWeatherEffects;
         public static int TicksPerUpdate;
+        public static int TicksPerCollect;
         public static float ConductivityPowerBase;
         public static float ConvectionConductivityEffect;
         public static float EnvironmentDiffusionFactor;
@@ -38,7 +39,8 @@ namespace Celsius
         public static bool ShowColorSettings;
         public static bool MainTabButtonVisible;
 
-        public const int TicksPerUpdate_Default = 120;
+        public const int TicksPerUpdate_Default = 20;
+        public const int TicksPerCollect_Default = 60;
         public const float ConductivityPowerBase_Default = 0.5f;
         public const float ConvectionConductivityEffect_Default = 10;
         public const float EnvironmentDiffusionFactor_Default = 0.10f;
@@ -70,6 +72,7 @@ namespace Celsius
             Scribe_Values.Look(ref AutoignitionEnabled, "AutoignitionEnabled", true);
             Scribe_Values.Look(ref PawnWeatherEffects, "PawnWeatherEffects", true);
             Scribe_Values.Look(ref TicksPerUpdate, "TicksPerUpdate", TicksPerUpdate_Default);
+            Scribe_Values.Look(ref TicksPerCollect, "TicksPerCollect", TicksPerCollect_Default);
             Scribe_Values.Look(ref ConvectionConductivityEffect, "ConvectionConductivityEffect", ConvectionConductivityEffect_Default);
             Scribe_Values.Look(ref EnvironmentDiffusionFactor, "EnvironmentDiffusionFactor", EnvironmentDiffusionFactor_Default);
             Scribe_Values.Look(ref RoofInsulation, "RoofInsulation", RoofInsulation_Default);
@@ -105,6 +108,16 @@ namespace Celsius
             T_Saturation = T_Saturation_Default;
         }
 
+        public static void ResetModel() {
+            TicksPerUpdate = TicksPerUpdate_Default;
+            TicksPerCollect = TicksPerCollect_Default;
+            ConvectionConductivityEffect = ConvectionConductivityEffect_Default;
+            EnvironmentDiffusionFactor = EnvironmentDiffusionFactor_Default;
+            RoofInsulation = RoofInsulation_Default;
+            HeatPushMultiplier = 1;
+            RecalculateValues();
+        }
+
         public static void Reset()
         {
             UseVanillaTemperatureColors = false;
@@ -112,11 +125,6 @@ namespace Celsius
             FreezingAndMeltingEnabled = true;
             AutoignitionEnabled = true;
             PawnWeatherEffects = true;
-            TicksPerUpdate = TicksPerUpdate_Default;
-            ConvectionConductivityEffect = ConvectionConductivityEffect_Default;
-            EnvironmentDiffusionFactor = EnvironmentDiffusionFactor_Default;
-            RoofInsulation = RoofInsulation_Default;
-            HeatPushMultiplier = 1;
             TemperatureDisplayDigits = TemperatureDisplayDigits_Default;
             CompatForceIceConversion = false;
             RitualHeatPushPerFireSize = RitualHeatPushPerFireSize_Default;
@@ -125,7 +133,7 @@ namespace Celsius
             ShowColorSettings = ShowColorSettings_Default;
 
             ResetColors();
-            RecalculateValues();
+            ResetModel();
 
             LC.Spam("Settings", "Settings reset.");
             Dump();

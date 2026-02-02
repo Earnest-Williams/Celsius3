@@ -12,7 +12,7 @@ using Verse;
 
 namespace Celsius
 {
-    class EMA {
+    public class EMA {
         public float alpha = 0.5f;
         public float ema = 0.0f;
         public EMA(int lookback, float s0) { ema = s0; alpha = 2.0f / (lookback + 1); } // lb > 2! ; 3 for 0.5
@@ -29,13 +29,13 @@ namespace Celsius
         int modelStartTick;
 
         // Thread payload run time moving averages
-        EMA collectorTickEma = new EMA(3, 1);
-        EMA collectorMsecEma = new EMA(3, 1);
-        EMA modelTickEma = new EMA(3, 1);
-        EMA modelMsecEma = new EMA(3, 1);
-        EMA modelStepEma = new EMA(3, 0.01f);
+        public EMA collectorTickEma = new EMA(3, 1);
+        public EMA collectorMsecEma = new EMA(3, 1);
+        public EMA modelTickEma = new EMA(3, 1);
+        public EMA modelMsecEma = new EMA(3, 1);
+        public EMA modelStepEma = new EMA(3, 0.01f);
         // Time spent in MapComponentTick
-        EMA mapComponentTickMsecEma = new EMA(3, 1);
+        public EMA mapComponentTickMsecEma = new EMA(3, 1);
 
         // Signals from threads that they are done with a payload run.
         bool collectorDone = false;
@@ -135,7 +135,7 @@ namespace Celsius
             CelsiusIceNine = TerrainDef.Named("IceNine");
             CelsiusSlade = TerrainDef.Named("Gravel");
 
-            // Prefill ThermalProps grids. Not saving those because data is prone to modlist changes
+            // Prefill ThermalProps grid. Not saving because data is prone to modlist changes
             RepopulateCTProps();
 
             // TODO: rename this and temperatures maybe
@@ -377,21 +377,17 @@ namespace Celsius
 #endregion CTBuffer
 #region EventHandlers
         public void Notify_BuildingSpawned(Building building) {
-            LC.Spam("Notify_BuildingSpawned",$"what={building} at={building.Position}");
             UpdateCTProps(building);
         }
         public void Notify_BuildingDespawned(Building building) {
-            LC.Spam("Notify_BuildingDespawned",$"what={building} at={building.Position}");
             UpdateCTProps(building, remove: true);
         }
         public void Notify_BuildingDestroyed(Building building) {
-            LC.Spam("Notify_BuildingDestroyed",$"what={building} at={building.Position}");
             UpdateCTProps(building, remove: true);
         }
         // this is called from CompThermal and in theory we can avoid CT lookups
         // or pass ostate here directly but do not do that for the sake of clarity.
         public void Notify_BuildingFlicked(Building building) {
-            LC.Spam("Notify_BuildingFlicked",$"what={building} at={building.Position}");
             UpdateCTProps(building);
         }
         // this is triggered by
@@ -560,7 +556,7 @@ namespace Celsius
 
         public override void ExposeData() {
             base.ExposeData();
-            LC.Spam("ExposeData({map})", $"{Scribe.mode}");
+            //LC.Spam($"ExposeData({map})", $"{Scribe.mode}");
 
             string modVersion = null;
             string dataVersion = null;
@@ -679,7 +675,7 @@ namespace Celsius
             // has thermalprops but does not have turnsInto attribute. ideally -- ICE9 only.
             // warn if that is not the case - that means some sloppy modding.
 
-            log.Info($"done. (from mod {modVersion} format r{dataVersion})");
+            log.Spam($"done. (v{modVersion} r{dataVersion})");
             mapNeedsInitialization = false;
 
         }
@@ -1297,23 +1293,11 @@ namespace Celsius
             int ticksSinceLastModelStart = thisTick - this.modelStartTick;
             int ticksSinceLastCollectorStart = thisTick - this.collectorStartTick;
 
-            if (thisTick % 180 == 1) {
-                var str = $"tick {thisTick}: runs: {modelRuns}/{collectRuns} {modelMsecEma.ema:F2} / {collectorMsecEma.ema:F2} ms ";
-                str += $"periods: {modelTickEma.ema:F2} / {collectorTickEma.ema:F2} ticks ";
-                str += $"mct {mapComponentTickMsecEma.ema:F2} ms modelStepEma {modelStepEma.ema:F3}";
-                log.Info(str);
-                log.Spam($"outdoor={map.mapTemperature.OutdoorTemp} seasonal={map.mapTemperature.SeasonalTemp}");
-            }
-            if (thisTick % 1800 == 1) {
-                TemperatureUtility.thermalsCache.LogStats();
-            }
-
             // time to run it again
-            if (!this.modelDone && ticksSinceLastModelStart > Settings.TicksPerUpdate) {
+            if (!this.modelDone && ticksSinceLastModelStart >= Settings.TicksPerUpdate) {
                 this.modelHandle.Set();
             }
-            // TODO: think of something better than just magic 4
-            if (!this.collectorDone && ticksSinceLastCollectorStart > Settings.TicksPerUpdate * 4) {
+            if (!this.collectorDone && ticksSinceLastCollectorStart >= Settings.TicksPerCollect) {
                 this.collectorHandle.Set();
             }
 
