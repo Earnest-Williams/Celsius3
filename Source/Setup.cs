@@ -15,12 +15,13 @@ namespace Celsius
     internal static class Setup
     {
         internal static Harmony harmony;
+        internal static LogContext log = new LogContext("Setup");
 
         static Setup()
         {
             if (harmony != null)
                 return;
-            var log = new LogContext("Setup");
+
             var ver = System.Reflection.Assembly.GetExecutingAssembly().GetName().Version.ToString(2);
             log.Info($"version {ver}");
 
@@ -134,7 +135,7 @@ namespace Celsius
             }
             catch (Exception e)
             {
-                LC.Error("ApplyHarmonyPatches", $"Patching failed: {e.ToString()}");
+                log.Error($"Patching failed: {e.ToString()}");
                 return false;
             }
             // try to unpatch what Insulation (Continued) patched, since those patches do nothing useful now
@@ -142,14 +143,13 @@ namespace Celsius
             try {
                 harmony.UnpatchAll("com.Pelador.Rimworld.Insulation");
             } catch (Exception e) {
-                LC.Error("ApplyHarmonyPatches", $"Insulation unpatch failed: {e.ToString()}");
+                log.Error($"Insulation unpatch failed: {e.ToString()}");
             }
 
             return IsHarmonyPatched;
         }
 
         static void UnpatchInsulation() {
-            var log = new LogContext("UnpatchInsulation");
             var original = typeof(RoomTempTracker).GetMethod("DeepEqualizationTempChangePerInterval",
                             BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             if (original == null) {
@@ -162,7 +162,7 @@ namespace Celsius
                 log.Spam($"owner: {patch.owner}");
                 if (patch.owner == "com.Pelador.Rimworld.Insulation") {
                     harmony.UnpatchAll("com.Pelador.Rimworld.Insulation");
-                    log.Info("removed Insulation Harmony patches.");
+                    log.Spam("removed Insulation Harmony patches.");
                     return;
                 }
             }
@@ -522,12 +522,12 @@ namespace Celsius
         // Vanilla Vehicles Expanded: When opening or closing a garage door, update its state and thermal values
         public static void VVE_GarageDoor_SpawnGarage(Building newGarage) {
             if (newGarage == null) {
-                (new LogContext("VVE_GarageDoor_SpawnGarage")).Error("newGarage is null.");
+                LC.Error("VVE_GarageDoor_SpawnGarage", "newGarage is null.");
                 return;
             }
             CompThermal compThermal = newGarage.TryGetComp<CompThermal>();
             if (compThermal == null) {
-                (new LogContext("VVE_GarageDoor_SpawnGarage")).Error($"no CompThermal for {newGarage.ThingID}.");
+                LC.Error("VVE_GarageDoor_SpawnGarage", $"no CompThermal for {newGarage.ThingID}.");
                 return;
             }
 
