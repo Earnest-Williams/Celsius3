@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
+using System.Text; //Enconding.UTF8
 using UnityEngine;
 using RimWorld;
 using Verse;
@@ -124,7 +125,7 @@ namespace Celsius
             LogContext log = new LogContext($"FinalizeInit({map})");
             var stopWatch = Stopwatch.StartNew();
             int NumGridCells = map.cellIndices.NumGridCells;
-            log.Info($"started, {map.cellIndices.SizeX}x{map.cellIndices.SizeZ}; {NumGridCells} cells.");
+            log.Info($"startedD, {map.cellIndices.SizeX}x{map.cellIndices.SizeZ}; {NumGridCells} cells.");
 
             if (initialized) {
                 log.Error("called on initialized object");
@@ -135,6 +136,7 @@ namespace Celsius
             CelsiusIceNine = TerrainDef.Named("IceNine");
             CelsiusSlade = TerrainDef.Named("Gravel");
 
+            log.Info($"tdefs:  ice9={CelsiusIceNine} slade={CelsiusSlade}");
             // Prefill ThermalProps grid. Not saving because data is prone to modlist changes
             RepopulateCTProps();
 
@@ -172,10 +174,10 @@ namespace Celsius
                 mapNeedsInitialization = false;
             }
             // old data conversion is delayed until here since LoadSave Scribe phase is too early
-            // TODO: think what happens
             if (iceConversionRequested) {
                 ConvertIceToIceNine();
                 iceConversionRequested = false;
+                log.Info($"terrainFlops now at {terrainFlops.Count}");
             }
 
             // do this after the above because ApplyTerrainEffects() also trigger TerrainChanged.
@@ -226,6 +228,7 @@ namespace Celsius
             stopWatch.Stop();
             log.Info($"done in {stopWatch.ElapsedMilliseconds} ms.");
             initialized = true;
+            minidump("/tmp/drw.msgpack");
         }
 
         // TODO: I'm not sure what this is supposed to return.
@@ -457,10 +460,15 @@ namespace Celsius
         }
 #endregion EventHandlers
 #region LoadSave
-       TerrainDef BestUnderIceTerrain(int index) {
-           var underTerrain = map.terrainGrid.UnderTerrainAt(index);
+       TerrainDef BestUnderIceTerrain(int index, int oc, out int nc) {
+            var underTerrain = map.terrainGrid.UnderTerrainAt(index);
+            nc = oc;
             if (underTerrain != null)
                 return underTerrain;
+            nc = oc + 1;
+            if (oc < 10) {
+                LC.Info("BUIT", $"{nc} underT = '{underTerrain}'");
+            }
 
            // we're called in before TemperatureInfo::Init()
            var tCache = TemperatureUtility.thermalsCache;
@@ -526,6 +534,7 @@ namespace Celsius
 
         void ConvertIceToIceNine() {
             var log = new LogContext($"ConvertIceToIceNine({map})");
+            log.Info($"tdefs:  ice9={CelsiusIceNine} slade={CelsiusSlade}");
             if (map.Biome == BiomeDefOf.SeaIce || map.Biome == BiomeDefOf.IceSheet) {
                 if (!Settings.CompatForceIceConversion) {
                     // TODO: make this a popup or something.
@@ -539,19 +548,21 @@ namespace Celsius
                 return; // means we got here by a huge mistake
             }
             int cnt = 0;
+            int cnt_u = 0;
             for (int i = 0 ; i < map.cellIndices.NumGridCells; i++) {
                 // direct grid manipulation, since otherwise it's a ton
                 // of unnecessary and useless TerrainChanged events.
                 // esp. at this point, where game is not running yet.
                 var oldTerrain = map.terrainGrid.TerrainAtIgnoreTemp(i);
                 if (oldTerrain == TerrainDefOf.Ice) {
-                    terrainFlops[i] = BestUnderIceTerrain(i);
+                    terrainFlops[i] = BestUnderIceTerrain(i, cnt_u, out int cnew);
                     map.terrainGrid.topGrid[i] = CelsiusIceNine;
                     map.terrainGrid.underGrid[i] = null;
                     cnt ++;
+                    cnt_u = cnew;
                 }
             }
-            log.Info($"{cnt} icy cells in {map.Biome} converted to meltable variant.");
+            log.Info($"{cnt} icy cells in {map.Biome} converted to meltable variant ({CelsiusIceNine}). {cnt_u} guesses.");
         }
 
         public override void ExposeData() {
@@ -582,10 +593,6 @@ namespace Celsius
                 case LoadSaveMode.ResolvingCrossRefs:
                     return;
                 case LoadSaveMode.PostLoadInit:
-                    if (iceConversionRequested) {
-                        ConvertIceToIceNine();
-                        iceConversionRequested = false;
-                    }
                     return;
             }
         }
@@ -598,18 +605,19 @@ namespace Celsius
             Scribe_Values.Look(ref dataVersion, "format");
 
             var ms = new MemoryStream(5 + 4 * temperatures.Length);
-            ms.WriteFloatArray(temperatures);
+            var mp = new Msgpack.Writer(ms);
             var buffer = ms.ToArray();
             DataExposeUtility.LookByteArray(ref buffer, "buildingTemps");
 
             ms.Seek(0, SeekOrigin.Begin);
-            ms.WriteFloatArray(terrainTemperatures);
+            mp.WriteFloatArray(terrainTemperatures);
             buffer = ms.ToArray();
             DataExposeUtility.LookByteArray(ref buffer, "terrainTemps");
 
             if (terrainFlops.Count > 0) {
                 ms.Seek(0, SeekOrigin.Begin);
-                ms.WriteMapInt2Str(terrainFlops);
+                Func<TerrainDef, string> tdefname = tdef => tdef.defName;
+                mp.WriteMapInt2Ts(terrainFlops, tdefname);
                 buffer = ms.ToArray();
                 DataExposeUtility.LookByteArray(ref buffer, "terrainFlops");
             }
@@ -641,7 +649,8 @@ namespace Celsius
             DataExposeUtility.LookByteArray(ref buffer, "buildingTemps");
             if (buffer != null) {
                 var ms = new MemoryStream(buffer);
-                temperatures = ms.ReadFloatArray();
+                var mp = new Msgpack.Reader(ms);
+                temperatures = mp.ReadFloatArray();
             } else {
                 log.Error("buildingTemps array missing. All temperature data will be reset.");
                 return;
@@ -650,7 +659,8 @@ namespace Celsius
             DataExposeUtility.LookByteArray(ref buffer, "terrainTemps");
             if (buffer != null) {
                 var ms = new MemoryStream(buffer);
-                terrainTemperatures = ms.ReadFloatArray();
+                var mp = new Msgpack.Reader(ms);
+                terrainTemperatures = mp.ReadFloatArray();
             } else {
                 log.Error("terrainTemps array missing. All temperature data will be reset.");
                 return;
@@ -660,7 +670,8 @@ namespace Celsius
             DataExposeUtility.LookByteArray(ref buffer, "terrainFlops");
             if (buffer != null) {
                 var ms = new MemoryStream(buffer);
-                foreach (var kv in ms.ReadMapInt2Str()) {
+                var mp = new Msgpack.Reader(ms);
+                foreach (var kv in mp.ReadMapInt2Str()) {
                     var tdef = TerrainDef.Named(kv.Value);
                     if (tdef != null) {
                         terrainFlops.Add(kv.Key, tdef);
@@ -677,7 +688,14 @@ namespace Celsius
 
             log.Spam($"done. (v{modVersion} r{dataVersion})");
             mapNeedsInitialization = false;
+        }
 
+        void minidump(string fname) {
+            using (var stream = File.Open(fname, FileMode.Create)) {
+                var mp = new Msgpack.Writer(stream);
+                Func<TerrainDef, string> tdefname = tdef => tdef.defName;
+                mp.WriteMapInt2Ts(terrainFlops, tdefname);
+            }
         }
 
         void LoadOldStyleData(string modVersion) {
@@ -835,8 +853,13 @@ namespace Celsius
                         tooltip += "\n" + "Celsius_MapTempOverlay_Terrain".Translate(terrainTemperature.ToStringTemperature(Settings.TemperatureDisplayFormatString));
                 }
 
-                if (Settings.DebugMode)
-                    Widgets.Label(new Rect(UI.MousePositionOnUIInverted.x + 20, UI.MousePositionOnUIInverted.y + 20, 150, 100), $"{tooltip}\n{GetThermalPropertiesAt(index)}");
+                if (Settings.DebugMode) {
+                    string tstr = "nf";
+                    if (terrainFlops.ContainsKey(index)) {
+                        tstr = $"\n{terrainFlops[index]}";
+                    }
+                    Widgets.Label(new Rect(UI.MousePositionOnUIInverted.x + 20, UI.MousePositionOnUIInverted.y + 20, 150, 100), $"{tooltip}\n{GetThermalPropertiesAt(index)}{tstr}");
+                }
                 else Widgets.Label(new Rect(UI.MousePositionOnUIInverted.x + 20, UI.MousePositionOnUIInverted.y + 20, 100, 40), tooltip);
 
                 Text.Font = font;
