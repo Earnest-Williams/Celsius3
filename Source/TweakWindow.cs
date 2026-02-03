@@ -145,7 +145,7 @@ namespace Celsius
 
             content.Label("Celsius_Settings_CollectInterval".Translate(TicksPerCollect), tooltip: "Celsius_Settings_CollectInterval_tooltip".Translate(TicksPerCollect_Default));
             int i = (int)content.Slider(TicksPerCollect, 1, 120).RoundWithPrecision(1);
-            if (i > TicksPerUpdate) {
+            if (i >= TicksPerUpdate) {
                 TicksPerCollect = i;
             }
 
@@ -174,16 +174,23 @@ namespace Celsius
             content.Gap();
             content.CheckboxLabeled("Celsius_Settings_DebugMode".Translate(), ref DebugMode, "Celsius_Settings_DebugMode_tooltip".Translate());
 
-            if (!mainTabMode) {
+            if (mainTabMode) {
                 content.Gap();
-                if (content.ButtonText("Celsius_Settings_MeltIceNine".Translate())) {
+                var oldColor = GUI.color;
+                GUI.color = new Color(1f, 0.3f, 0.35f);
+                b = content.ButtonText("Celsius_Settings_MeltIceNine".Translate());
+                GUI.color = oldColor;
+                if (b) {
                     meltIceButtonPressed = true;
                 } else {
                     if (meltIceButtonPressed) {
-                        TemperatureUtility.MeltIceNine();
+                        Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("Celsius_ReallyMeltIceNine".Translate(),
+                                                                                    delegate { TemperatureUtility.MeltIceNine(); },
+                                                                                   true, null, WindowLayer.Dialog));
                         meltIceButtonPressed = false;
                     }
                 }
+            } else {
                 content.Gap();
                 content.CheckboxLabeled("Celsius_Settings_ForceIceConversion".Translate(), ref CompatForceIceConversion, "Celsius_Settings_ForceIceConversion_tooltip".Translate());
             }
