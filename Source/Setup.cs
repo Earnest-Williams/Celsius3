@@ -140,12 +140,6 @@ namespace Celsius
             }
             // try to unpatch what Insulation (Continued) patched, since those patches do nothing useful now
             UnpatchInsulation();
-            try {
-                harmony.UnpatchAll("com.Pelador.Rimworld.Insulation");
-            } catch (Exception e) {
-                log.Error($"Insulation unpatch failed: {e.ToString()}");
-            }
-
             return IsHarmonyPatched;
         }
 
@@ -166,7 +160,6 @@ namespace Celsius
                     return;
                 }
             }
-
         }
 
         public static void RemoveHarmonyPatches() => harmony.UnpatchAll("Garwel.Celsius");
