@@ -72,7 +72,10 @@ namespace Celsius
 
         public bool MeltsAt(float temperature) => phaseTransition == PhaseTransitionType.Melt && temperature > transitionTemperature;
 
-        public override string ToString() => $"Heat capacity: {heatCapacity}. Insulation: {insulation}. Conductivity: {conductivity:P1}. Heat flow: {HeatFlow:F3}.";
+        public override string ToString() {
+            string str = $"Heat capacity: {heatCapacity}; Insulation: {insulation}; Airflow: {airflow}; ";
+            return str + $"Conductivity: {conductivity:P1}; Heat flow: {HeatFlow:F3};";
+        }
     }
 
     public class StuffThermalProperties : DefModExtension
@@ -109,8 +112,10 @@ namespace Celsius
             }
         }
 
-        public override string ToString() => $"Heat capacity: {heatCapacity:F1}. Volume: {volume:F3} m^3. Insulation: {insulation:F1}. Airflow: {airflow:P0}/{airflowWhenOpen:P0}.";
-
+        public override string ToString() {
+            string str = $"Heat capacity: {heatCapacity:F1}; Volume: {volume:F3} m^3; ";
+            return str + $"Insulation: {insulation:F1}; Airflow: {airflow:P0}/{airflowWhenOpen:P0};";
+        }
     }
 
     public enum PhaseTransitionType
@@ -151,8 +156,10 @@ namespace Celsius
             }
         }
 
-        public override string ToString() =>
-            $"Heat capacity: {heatCapacity:F1}. Insulation: {insulation:F1}. {phaseTransition}s at {transitionTemperature:F1}{(turnsInto != null ? $" into {turnsInto.defName}" : "")}.";
+        public override string ToString() {
+            string str = $"Heat capacity: {heatCapacity:F1}; Insulation: {insulation:F1}; {phaseTransition}s at {transitionTemperature:F1};";
+            return str + turnsInto != null ? $" into {turnsInto.defName};" : "";
+        }
     }
 
     // this is guaranteed to have either both null or both non-null.
