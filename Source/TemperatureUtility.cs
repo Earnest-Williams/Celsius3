@@ -16,18 +16,6 @@ namespace Celsius
         static Dictionary<Map, TemperatureInfo> temperatureInfos = new Dictionary<Map, TemperatureInfo>();
         internal static readonly ThermalsCache thermalsCache = new ThermalsCache();
 
-        // A map gets the TemperatureInfo MapComponent in Map::FillComponents()
-        // which just instantiates all existing subclasses of MapComponent for each map.
-        // Map:GetComponent<> is linear search over a List filled there.
-        //
-        // This can return null IFF TemperatureInfo constructor threw.
-        // Said constructor is exacly one line:  this.map = map.
-        //
-        // So no point checking it everywhere.
-        //
-        // Now, it's not like we have dozens of maps. usually just one or three.
-        // Might make sense to not look it up in a dict every time.
-        //
         public static bool TryGetTemprComp(this Map map, out TemperatureInfo tinfo) {
             if (map == null) {
                 // this happens f.ex. on mapgen when the generator replaces mineable walls
@@ -49,6 +37,7 @@ namespace Celsius
                 log.Spam($"First lookup for {map}");
                 temperatureInfos.Add(map, tinfo);
             }
+
             cachedMap = map;
             cachedTInfo = tinfo;
             return true;
