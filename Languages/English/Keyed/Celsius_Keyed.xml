@@ -60,13 +60,13 @@
 	<Celsius_Settings_PressureExponent_tooltip>Default: {0}</Celsius_Settings_PressureExponent_tooltip>
 	<Celsius_Settings_T_Saturation>Saturation: {0}</Celsius_Settings_T_Saturation>
 	<Celsius_Settings_ResetColors>Reset colortemps</Celsius_Settings_ResetColors>
-    <Celsius_Settings_MeltIceNine>Prepare for mod removal (save game after pressing this button)</Celsius_Settings_MeltIceNine>
+    <Celsius_Settings_MeltIceNine>Melt Ice Nine</Celsius_Settings_MeltIceNine>
 
     <Celsius_Settings_MainTabButtonVisible>Main tab button</Celsius_Settings_MainTabButtonVisible>
     <Celsius_Settings_ShowColorSettings>Show color settings</Celsius_Settings_ShowColorSettings>
     <Celsius_Settings_HideColorSettings>Hide color settings</Celsius_Settings_HideColorSettings>
     <Celsius_Settings_FlushCaches>Flush ThermalProps caches</Celsius_Settings_FlushCaches>
-
+    <Celsius_ReallyMeltIceNine>Really melt IceNine? This will disable freeze/melt and if you save game afterwards it should be fine to disable the mod.</Celsius_ReallyMeltIceNine>
 	<Celsius_MapTempOverlay_Cell>Cell: {0}</Celsius_MapTempOverlay_Cell>
 	<Celsius_MapTempOverlay_Terrain>Terrain: {0}</Celsius_MapTempOverlay_Terrain>
 	<Celsius_Terrain>Terrain</Celsius_Terrain>
