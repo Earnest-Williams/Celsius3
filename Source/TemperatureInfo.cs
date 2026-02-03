@@ -597,10 +597,14 @@ namespace Celsius
                 // the three below are in order as they are called.
                 // two latter back to back from one function
                 case LoadSaveMode.LoadingVars:
-                    if (dataVersion != null) {
-                        LoadData(modVersion, dataVersion);
-                    } else {
-                        LoadOldStyleData(modVersion);
+                    try {
+                        if (dataVersion != null) {
+                            LoadData(modVersion, dataVersion);
+                        } else {
+                            LoadOldStyleData(modVersion);
+                        }
+                    } catch (Exception e) {
+                        LC.Error("LoadingVars", $"Exception loading data: {e}. Reinitializing temperatures.");
                     }
                     return;
                 case LoadSaveMode.ResolvingCrossRefs:
