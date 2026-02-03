@@ -1,6 +1,7 @@
 ﻿using HarmonyLib;
 using RimWorld;
 using System;
+using System.Threading;
 using System.Collections.Generic;
 using UnityEngine;
 using Verse;
@@ -15,6 +16,8 @@ namespace Celsius
         static TemperatureInfo cachedTInfo = null;
         static Dictionary<Map, TemperatureInfo> temperatureInfos = new Dictionary<Map, TemperatureInfo>();
         internal static readonly ThermalsCache thermalsCache = new ThermalsCache();
+        public static int threadIdChanges = 0;
+        static int lastThreadId = 0;
 
         public static bool TryGetTemprComp(this Map map, out TemperatureInfo tinfo) {
             if (map == null) {
@@ -22,6 +25,12 @@ namespace Celsius
                 // with ore and whatnot.
                 tinfo = null;
                 return false;
+            }
+            // count seen changes in thread id. it'll show if we're in concurrency trouble here
+            int thisThreadId = Thread.CurrentThread.ManagedThreadId;
+            if (lastThreadId != thisThreadId) {
+                lastThreadId = thisThreadId;
+                threadIdChanges += 1;
             }
             if (object.ReferenceEquals(map, cachedMap)) {
                 tinfo = cachedTInfo;
