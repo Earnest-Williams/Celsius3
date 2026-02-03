@@ -704,10 +704,13 @@ namespace Celsius
         }
 
         void minidump(string fname) {
-            using (var stream = File.Open(fname, FileMode.Create)) {
+            var fpath = Path.Combine(System.IO.Path.GetTempPath(), fname);
+            LC.Spam($"mininump({map})", $"{fpath}: dumping {terrainFlops.Count} flops, {terrainTemperatures.Length} tertemps");
+            using (var stream = File.Open(fpath, FileMode.Create)) {
                 var mp = new Msgpack.Writer(stream);
                 Func<TerrainDef, string> tdefname = tdef => tdef.defName;
                 mp.WriteMapInt2Ts(terrainFlops, tdefname);
+                mp.WriteFloatArray(terrainTemperatures);
             }
         }
 
