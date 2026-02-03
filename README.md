@@ -25,6 +25,27 @@ Save files are backwards incompatible, that is, 2.6 can't read 2.7 stuff.
 
 Please help with testing, bugreports and suggestions are very welcome.
 
+## Changes from 2.6
+
+ - No conflicts with the pathfinder or anything else multithreaded.
+ - 2.6 tended to lose pushed heat from time to time. This was visible as heaters/coolers
+   appearing to work weirdly. No more.
+ - Runs fast, on 476x476 map and a not-so-fast cpu (ryzen 5 2600X), 180+ other mods
+   it can do one-two runs per tick.
+ - Problems with perma-ice biomes melting fixed. Vanilla ice doesn't melt, instead water
+   freezes into other, meltable ice.
+ - Stuck hotspots, 300C geysers, 40C pawn fever, minified portable generators pushing heat all fixed, hopefully.
+ - Temperature overlay coloring reworked to resemble the one in Heat Map mod, tunable from the settings.
+   The idea is that temperature is mapped to Hue in Hue-Saturation-Brightness color representation.
+ - Odyssey freezing, floods should work correctly. That one is mostly untested though.
+
+## To be done
+
+ - Make vacuum not accept any heat
+ - And hide that -75C nonsense
+ - Testing, testing, testing.
+
+
 This project is hosted at [https://codeberg.org/lxnt/Celsius3](https://codeberg.org/lxnt/Celsius3)
 
 This project is not yet uploaded to Steam.
