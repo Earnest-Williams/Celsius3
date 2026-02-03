@@ -204,6 +204,8 @@ namespace Celsius
         // also caches negative hits as nulls.
         ConcurrentDictionary<uint, ThermalPair> thingCache = new ConcurrentDictionary<uint, ThermalPair>();
 
+        object flushLock = new object();
+
         LogContext log;
 
         ulong thingHits = 0;
@@ -219,13 +221,19 @@ namespace Celsius
             whitelist = defWhitelist.Count;
         }
 
-        private static Mutex flushMutex = new Mutex();
 
-        ~ThermalsCache() { flushMutex.Dispose(); }
 
         public void Flush() {
+            try {
+                Monitor.Enter(this.flushLock); // lock everyone out while we repopulate dicts
+                _flush();
+            } finally {
+                Monitor.Exit(this.flushLock);
+            }
+        }
+
+        void _flush() {
             log = new LogContext("ThermalsCache.Flush");
-            flushMutex.WaitOne(); // lock everyone out while we repopulate dicts
             _terrainCache.Clear();
             _terrainFlammability.Clear();
             foreach (TerrainDef tdef in DefDatabase<TerrainDef>.AllDefsListForReading) {
@@ -257,7 +265,6 @@ namespace Celsius
             thingCache.Clear();
             thingHits = 0;
             thingMisses = 0;
-            flushMutex.ReleaseMutex();
         }
 
         public void LogStats() {
