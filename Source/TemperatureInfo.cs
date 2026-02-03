@@ -30,9 +30,11 @@ namespace Celsius
         int modelStartTick;
 
         // Thread payload run time moving averages
-        public EMA collectorTickEma = new EMA(3, 1);
+        public EMA collectorPeriodTickEma = new EMA(3, 1);
+        public EMA collectorRunTickEma = new EMA(3, 1);
         public EMA collectorMsecEma = new EMA(3, 1);
-        public EMA modelTickEma = new EMA(3, 1);
+        public EMA modelRunTickEma = new EMA(3, 1);
+        public EMA modelPeriodTickEma = new EMA(3, 1);
         public EMA modelMsecEma = new EMA(3, 1);
         public EMA modelStepEma = new EMA(3, 0.01f);
         // Time spent in MapComponentTick
@@ -931,7 +933,7 @@ namespace Celsius
             var stopWatch = Stopwatch.StartNew();
             int runStartTick = GenTicks.TicksGame;
             int ticksSinceLastStart = runStartTick - this.modelStartTick;
-            this.modelTickEma.update(ticksSinceLastStart);
+            this.modelPeriodTickEma.update(ticksSinceLastStart);
             this.modelStartTick = runStartTick;
 
             // Adjust environment/outdoors heat transfer since the model was
@@ -1035,6 +1037,7 @@ namespace Celsius
 
             stopWatch.Stop();
             this.modelMsecEma.update(stopWatch.ElapsedMilliseconds);
+            this.modelRunTickEma.update(GenTicks.TicksGame - runStartTick);
             this.modelDone = true;
         }
 
@@ -1045,7 +1048,7 @@ namespace Celsius
             var stopWatch = Stopwatch.StartNew();
             int runStartTick = GenTicks.TicksGame;
             int ticksSinceLastStart = runStartTick - this.collectorStartTick;
-            this.collectorTickEma.update(ticksSinceLastStart);
+            this.collectorPeriodTickEma.update(ticksSinceLastStart);
             this.collectorStartTick = runStartTick;
 
             // Odysseus FreezeManager uses c.GetTemperature(this.map); for melting/freezing ThinIce on tempGrid
@@ -1149,6 +1152,7 @@ namespace Celsius
                 }
             });
             stopWatch.Stop();
+            this.collectorRunTickEma.update(GenTicks.TicksGame - runStartTick);
             this.collectorMsecEma.update(stopWatch.ElapsedMilliseconds);
             this.collectorDone = true;
         }
@@ -1200,7 +1204,6 @@ namespace Celsius
                         nextTerrain = flopDef;
                     }
                 }
-
 
                 if (nextTerrain == null) {
                     if (tc.dir == PTDir.Freeze) {

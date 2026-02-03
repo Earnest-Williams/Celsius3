@@ -66,7 +66,7 @@ namespace Celsius
 
             content.Gap();
 
-            content.Label("Celsius_Settings_Colors".Translate());
+            //content.Label("Celsius_Settings_Colors".Translate());
 
             b = UseVanillaTemperatureColors;
             content.CheckboxLabeled("Celsius_Settings_Vanilla".Translate(), ref b, "Celsius_Settings_Vanilla_tooltip".Translate());
@@ -125,10 +125,17 @@ namespace Celsius
             }
 
             content.Gap();
-            content.Label("Celsius_Settings_TakeOwnRisk".Translate().Colorize(Color.red));
 
             content.Label("Celsius_Settings_UpdateInterval".Translate(TicksPerUpdate), tooltip: "Celsius_Settings_UpdateInterval_tooltip".Translate(TicksPerUpdate_Default));
             TicksPerUpdate = (int)content.Slider(TicksPerUpdate, 1, 120).RoundWithPrecision(1);
+
+            content.Label("Celsius_Settings_CollectInterval".Translate(TicksPerCollect), tooltip: "Celsius_Settings_CollectInterval_tooltip".Translate(TicksPerCollect_Default));
+            int i = (int)content.Slider(TicksPerCollect, 1, 120).RoundWithPrecision(1);
+            if (i >= TicksPerUpdate) {
+                TicksPerCollect = i;
+            }
+
+            content.Label("Celsius_Settings_TakeOwnRisk".Translate().Colorize(Color.red));
 
             content.Label($"{"Celsius_Settings_ConvectionConductivityEffect".Translate()} x{ConvectionConductivityEffect}", tooltip: "Celsius_Settings_ConvectionConductivityEffect_tooltip".Translate(ConvectionConductivityEffect_Default));
             ConvectionConductivityEffect = Mathf.Round(content.Slider(ConvectionConductivityEffect, 1, 50));
@@ -142,12 +149,6 @@ namespace Celsius
             content.Label("Celsius_Settings_HeatPush".Translate(HeatPushMultiplier.ToStringPercent()), tooltip: "Celsius_Settings_HeatPush_tooltip".Translate());
             HeatPushMultiplier = content.Slider(HeatPushMultiplier, 0, 2).RoundWithPrecision(0.1f);
             HeatPushEffect = HeatPushEffect_Base * HeatPushMultiplier;
-
-            content.Label("Celsius_Settings_CollectInterval".Translate(TicksPerCollect), tooltip: "Celsius_Settings_CollectInterval_tooltip".Translate(TicksPerCollect_Default));
-            int i = (int)content.Slider(TicksPerCollect, 1, 120).RoundWithPrecision(1);
-            if (i >= TicksPerUpdate) {
-                TicksPerCollect = i;
-            }
 
             if (mainTabMode) {
                 content.Gap();
@@ -197,21 +198,27 @@ namespace Celsius
 
             if (mainTabMode && TemperatureUtility.TryGetTemprComp(Find.CurrentMap, out tinfo)) {
                 var mms = tinfo.modelMsecEma.ema;
-                var mt  = tinfo.modelTickEma.ema;
+                var mrt = tinfo.modelRunTickEma.ema;
+                var mpt = tinfo.modelPeriodTickEma.ema;
                 var cms = tinfo.collectorMsecEma.ema;
-                var ct  = tinfo.collectorTickEma.ema;
+                var crt  = tinfo.collectorRunTickEma.ema;
+                var cpt  = tinfo.collectorPeriodTickEma.ema;
                 var mst = tinfo.modelStepEma.ema;
 
-                content.Label($"Model run {mms:F1} ms  period {mt:F1} ticks; stepFactor {mst:F3}");
-                content.Label($"Collector run {cms:F1} ms period {ct:F1} ticks.");
-
+                content.Label($"Model run {mms:F1} ms / {mrt:F1} ticks; period {mpt:F1} stepFactor {mst:F3}");
+                content.Label($"Collector run {cms:F1} ms / {crt:F1} ticks; period {cpt:F1} ticks.");
                 TemperatureUtility.thermalsCache.Counts(out int things, out int terrains, out int terrFlam, out int whitelist);
+                content.Label($"Interesting number: {TemperatureUtility.threadIdChanges}");
                 content.Label($"Caches: ThermalProps {things} defWhitelist {whitelist}");
                 content.Label($"TerrainDefs {terrains} Terrain flammability {terrFlam}");
                 content.Gap();
-                content.Label($"Interesting number: {TemperatureUtility.threadIdChanges}");
+                content.Label($"Model is being run too frequently if model run time in ticks");
+                content.Label($"approaches its period. Or, the same thing, actual period lags");
+                content.Label($"behind one set by the slider.");
 
 /* TODO: figure out what I was thinking
+ *
+ * how to know if you run the model too frequently: it is when
                 if (mms > 1.0f) {
                     const float targetTPS = 60.0f;
                     const float sixtyTPSBudget = 1000.0f / 60.0f;
