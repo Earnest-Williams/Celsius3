@@ -208,6 +208,19 @@ namespace Celsius
                 TemperatureUtility.thermalsCache.Counts(out int things, out int terrains, out int terrFlam, out int whitelist);
                 content.Label($"Caches: ThermalProps {things} defWhitelist {whitelist}");
                 content.Label($"TerrainDefs {terrains} Terrain flammability {terrFlam}");
+                content.Gap();
+                content.Label($"Interesting number: {TemperatureUtility.threadIdChanges}");
+
+/* TODO: figure out what I was thinking
+                if (mms > 1.0f) {
+                    const float targetTPS = 60.0f;
+                    const float sixtyTPSBudget = 1000.0f / 60.0f;
+                    const float
+                    sixtyTPSBudget / mms
+                    content.Gap();
+                    content.Label($"Recommended model update period for 60 tps: {rmp}");
+                }
+*/
             }
 
             viewRect.height = content.MaxColumnHeightSeen + 40;
