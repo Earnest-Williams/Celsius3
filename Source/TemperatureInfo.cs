@@ -756,7 +756,7 @@ namespace Celsius
         }
 #endregion LoadSave
         public override void MapRemoved() {
-            LogContext log = new LogContext("MapRemoved");
+            TemperatureUtility.RemoveMap(map);
             // disable event handling
             initialized = false;
             // tell threads to exit:
@@ -765,8 +765,7 @@ namespace Celsius
             this.collectorHandle.Set();
             this.modelThread.Join();
             this.collectorThread.Join();
-            TemperatureUtility.temperatureInfos.Remove(map);
-            log.Info($"Map {map} removed. TemperatureInfo cache now contains {TemperatureUtility.temperatureInfos.Count} records.");
+            LC.Spam($"MapRemoved({map})", "done.");
         }
         public void ThermalPropertiesInvalidated() {
             RepopulateCTProps();

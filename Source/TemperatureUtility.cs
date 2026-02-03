@@ -11,7 +11,9 @@ namespace Celsius
     {
         public const float TemperatureChangePrecision = 0.01f;
 
-        internal static readonly Dictionary<Map, TemperatureInfo> temperatureInfos = new Dictionary<Map, TemperatureInfo>();
+        static Map cachedMap = null;
+        static TemperatureInfo cachedTInfo = null;
+        static Dictionary<Map, TemperatureInfo> temperatureInfos = new Dictionary<Map, TemperatureInfo>();
         internal static readonly ThermalsCache thermalsCache = new ThermalsCache();
 
         // A map gets the TemperatureInfo MapComponent in Map::FillComponents()
@@ -33,6 +35,10 @@ namespace Celsius
                 tinfo = null;
                 return false;
             }
+            if (object.ReferenceEquals(map, cachedMap)) {
+                tinfo = cachedTInfo;
+                return true;
+            }
             if (!temperatureInfos.TryGetValue(map, out tinfo)) {
                 var log = new LogContext("TryGetTemprComp");
                 tinfo = map.GetComponent<TemperatureInfo>();
@@ -43,7 +49,16 @@ namespace Celsius
                 log.Spam($"First lookup for {map}");
                 temperatureInfos.Add(map, tinfo);
             }
+            cachedMap = map;
+            cachedTInfo = tinfo;
             return true;
+        }
+        public static void RemoveMap(Map map) {
+            temperatureInfos.Remove(map);
+            if (object.ReferenceEquals(map, cachedMap)) {
+                cachedMap = null;
+                cachedTInfo = null;
+            }
         }
 
         public static void MeltIceNine() {
