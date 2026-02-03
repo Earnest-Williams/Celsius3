@@ -860,28 +860,41 @@ namespace Celsius
             }
             if (!Find.PlaySettings.showTemperatureOverlay || !Settings.ShowTemperatureTooltip)
                 return;
-            int index = map.cellIndices.CellToIndex(UI.MouseCell());
-            if (InBounds(index) && (!map.fogGrid.IsFogged(index) || Prefs.DevMode))
-            {
+            var cell = UI.MouseCell();
+            int index = map.cellIndices.CellToIndex(cell);
+            if (cell.InBounds(map) && (!map.fogGrid.IsFogged(index) || Prefs.DevMode)) {
                 GameFont font = Text.Font;
                 Text.Font = GameFont.Tiny;
-                string tooltip = "Celsius_MapTempOverlay_Cell".Translate(GetTemperatureForCell(index).ToStringTemperature(Settings.TemperatureDisplayFormatString));
-                if (Settings.FreezingAndMeltingEnabled)
-                {
-                    float terrainTemperature = terrainTemperatures[index];
-                    if (!float.IsNaN(terrainTemperature))
-                        tooltip += "\n" + "Celsius_MapTempOverlay_Terrain".Translate(terrainTemperature.ToStringTemperature(Settings.TemperatureDisplayFormatString));
-                }
+
+                string tooltip = "Celsius_MapTempOverlay_Cell".Translate(GetTemperatureForCell(index)
+                                            .ToStringTemperature(Settings.TemperatureDisplayFormatString));
+                int tt_lines = 1;
 
                 if (Settings.DebugMode) {
-                    string tstr = "nf";
-                    if (terrainFlops.ContainsKey(index)) {
-                        tstr = $"\n{terrainFlops[index]}";
-                    }
-                    Widgets.Label(new Rect(UI.MousePositionOnUIInverted.x + 20, UI.MousePositionOnUIInverted.y + 20, 150, 100), $"{tooltip}\n{GetThermalPropertiesAt(index)}{tstr}");
+                    tooltip += $"\n" + GetThermalPropertiesAt(index).ToString();
+                    tooltip += "\n";
+                    tt_lines += 6;
                 }
-                else Widgets.Label(new Rect(UI.MousePositionOnUIInverted.x + 20, UI.MousePositionOnUIInverted.y + 20, 100, 40), tooltip);
-
+                float terrainTemperature = terrainTemperatures[index];
+                if (!float.IsNaN(terrainTemperature)) {
+                    TerrainDef terrain = map.terrainGrid.TerrainAtIgnoreTemp(index);
+                    tooltip += $"\n{terrain.defName}: {terrainTemperature.ToStringTemperature(Settings.TemperatureDisplayFormatString)}";
+                    tt_lines += 1;
+                    if (Settings.DebugMode) {
+                        if (terrainFlops.ContainsKey(index)) {
+                            tooltip += $"\nflopTo: {terrainFlops[index].defName}";
+                            tt_lines += 1;
+                        }
+                        if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out ThermalProps terrainProps)) {
+                            tooltip += $"\n" + terrainProps.ToString();
+                            tt_lines += 4;
+                        }
+                    }
+                }
+                const int TinyFontLabelHeight = 16; // carefully measured.
+                int tooltip_h = tt_lines * TinyFontLabelHeight;
+                tooltip = tooltip.Replace("; ", "\n"); // props' ToStrings have conveniently placed semicolons
+                Widgets.Label(new Rect(UI.MousePositionOnUIInverted.x + 20, UI.MousePositionOnUIInverted.y + 20, 256, tooltip_h), tooltip);
                 Text.Font = font;
             }
         }
@@ -1362,8 +1375,6 @@ namespace Celsius
             this.mapComponentTickMsecEma.update(stopWatch.ElapsedMilliseconds);
         }
 #endregion ModelAndTick
-        public bool InBounds(int index) => index >= 0 && index < temperatures.Length;
-
         public float GetTemperatureForCell(int index) => temperatures != null ? temperatures[index] : TemperatureTuning.DefaultTemperature;
 
         public float GetTemperatureForCell(IntVec3 cell) => GetTemperatureForCell(map.cellIndices.CellToIndex(cell));
