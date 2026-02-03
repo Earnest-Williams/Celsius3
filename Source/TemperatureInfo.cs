@@ -525,7 +525,7 @@ namespace Celsius
                 var index = kv.Key;
                 var tdef = kv.Value;
 
-                if (map.terrainGrid.topGrid[index] == CelsiusIceNine) {
+                if (map.terrainGrid.topGrid[index] != CelsiusIceNine) {
                     log.Error($"cell {index} in tflops, but top terrain is {map.terrainGrid.topGrid[index]}, not IceNine");
                     continue;
                 }
