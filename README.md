@@ -37,6 +37,7 @@ Please help with testing, bugreports and suggestions are very welcome.
  - Stuck hotspots, 300C geysers, 40C pawn fever, minified portable generators pushing heat all fixed, hopefully.
  - Temperature overlay coloring reworked to resemble the one in Heat Map mod, tunable from the settings.
    The idea is that temperature is mapped to Hue in Hue-Saturation-Brightness color representation.
+ - Map temperature layers stored compressed in the savegame.
  - Odyssey freezing, floods should work correctly. That one is mostly untested though.
 
 ## To be done
