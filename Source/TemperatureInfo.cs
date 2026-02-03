@@ -619,6 +619,7 @@ namespace Celsius
 
             var ms = new MemoryStream(5 + 4 * temperatures.Length);
             var mp = new Msgpack.Writer(ms);
+            mp.WriteFloatArray(temperatures);
             var buffer = ms.ToArray();
             DataExposeUtility.LookByteArray(ref buffer, "buildingTemps");
 
