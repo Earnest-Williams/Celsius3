@@ -316,10 +316,9 @@ namespace Celsius
             LogContext log = new LogContext($"RepopulateCTProps({map})");
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
-            if (cachedTProps == null) {
-                cachedTProps = new ThermalProps[map.cellIndices.NumGridCells];
-            }
-            PrefillCTProps(cachedTProps);
+            var newTProps = new ThermalProps[map.cellIndices.NumGridCells];
+            PrefillCTProps(newTProps);
+            cachedTProps = newTProps;
             stopWatch.Stop();
             log.Info($"done in {stopWatch.ElapsedMilliseconds} ms.");
         }
