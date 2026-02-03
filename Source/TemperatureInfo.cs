@@ -887,12 +887,13 @@ namespace Celsius
                         }
                         if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out ThermalProps terrainProps)) {
                             tooltip += $"\n" + terrainProps.ToString();
-                            tt_lines += 4;
+                            tt_lines += 7;
                         }
                     }
                 }
                 const int TinyFontLabelHeight = 16; // carefully measured.
-                int tooltip_h = tt_lines * TinyFontLabelHeight;
+                const int TinyFontLabelFudge  =  8; // also.
+                int tooltip_h = tt_lines * TinyFontLabelHeight + TinyFontLabelFudge;
                 tooltip = tooltip.Replace("; ", "\n"); // props' ToStrings have conveniently placed semicolons
                 Widgets.Label(new Rect(UI.MousePositionOnUIInverted.x + 20, UI.MousePositionOnUIInverted.y + 20, 256, tooltip_h), tooltip);
                 Text.Font = font;

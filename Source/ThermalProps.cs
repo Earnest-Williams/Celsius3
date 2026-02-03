@@ -74,7 +74,13 @@ namespace Celsius
 
         public override string ToString() {
             string str = $"Heat capacity: {heatCapacity}; Insulation: {insulation}; Airflow: {airflow}; ";
-            return str + $"Conductivity: {conductivity:P1}; Heat flow: {HeatFlow:F3};";
+            str += $"Conductivity: {conductivity:P1}; Heat flow: {HeatFlow:F3};";
+            if (phaseTransition != PhaseTransitionType.NotSet
+             && phaseTransition != PhaseTransitionType.None) {
+                str += $" {phaseTransition}s at {transitionTemperature:F1}; ";
+                str += turnsInto != null ? $" into {turnsInto.defName}" : "";
+            }
+            return str;
         }
     }
 
