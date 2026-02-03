@@ -125,10 +125,10 @@ namespace Celsius
             LogContext log = new LogContext($"FinalizeInit({map})");
             var stopWatch = Stopwatch.StartNew();
             int NumGridCells = map.cellIndices.NumGridCells;
-            log.Info($"startedD, {map.cellIndices.SizeX}x{map.cellIndices.SizeZ}; {NumGridCells} cells.");
+            log.Info($"started, {map.cellIndices.SizeX}x{map.cellIndices.SizeZ}; {NumGridCells} cells.");
 
             if (initialized) {
-                log.Error("called on initialized object");
+                log.Error("called on initialized object, continuing anyway.");
             }
 
             // Not the best time for this but idk at what point
@@ -136,7 +136,10 @@ namespace Celsius
             CelsiusIceNine = TerrainDef.Named("IceNine");
             CelsiusSlade = TerrainDef.Named("Gravel");
 
-            log.Info($"tdefs:  ice9={CelsiusIceNine} slade={CelsiusSlade}");
+            if (CelsiusIceNine == null) {
+                log.Error("CelsiusIceNine TerrainDef missing, this will blow up spectacularly.");
+            }
+
             // Prefill ThermalProps grid. Not saving because data is prone to modlist changes
             RepopulateCTProps();
 
@@ -154,6 +157,7 @@ namespace Celsius
             if (mapNeedsInitialization) {
                 bool generated = false;
                 var st = new StackTrace();
+                log.Spam("Detecting if the map was just generated, stack trace:");
                 for (int i = 0;i < st.FrameCount; i++) {
                     var methodInfo = st.GetFrame(i).GetMethod();
                     // patched (i.e. VEF): MonoMod.Utils.DynamicMethodDefinition:Verse.MapGenerator.GenerateMap_PatchN
@@ -177,7 +181,6 @@ namespace Celsius
             if (iceConversionRequested) {
                 ConvertIceToIceNine();
                 iceConversionRequested = false;
-                log.Info($"terrainFlops now at {terrainFlops.Count}");
             }
 
             // do this after the above because ApplyTerrainEffects() also trigger TerrainChanged.
@@ -460,47 +463,51 @@ namespace Celsius
         }
 #endregion EventHandlers
 #region LoadSave
-       TerrainDef BestUnderIceTerrain(int index, int oc, out int nc) {
-            var underTerrain = map.terrainGrid.UnderTerrainAt(index);
-            nc = oc;
-            if (underTerrain != null)
-                return underTerrain;
-            nc = oc + 1;
-            if (oc < 10) {
-                LC.Info("BUIT", $"{nc} underT = '{underTerrain}'");
-            }
-
-           // we're called in before TemperatureInfo::Init()
-           var tCache = TemperatureUtility.thermalsCache;
-           IntVec3 cell = map.cellIndices.IndexToCell(index);
-           bool foundGround = false;
-           foreach (IntVec3 ncell in GenAdjFast.AdjacentCells8Way(cell)) {
+        // take a guess what this cell might melt into
+        // look at a neighbor and:
+        // 1. if it's freezable, good. use it.
+        // 2. if it's meltable and has defined turnsInto use it too.
+        // 3. if neither, leave as candidate.
+        // 4. repeat same for neighbour' underterrain
+        // 5. if all fails, choose water.
+        TerrainDef BestUnderIceTerrain(int index) {
+            var tCache = TemperatureUtility.thermalsCache;
+            IntVec3 cell = map.cellIndices.IndexToCell(index);
+            bool foundGround = false;
+            foreach (IntVec3 ncell in GenAdjFast.AdjacentCells8Way(cell)) {
                 if (!ncell.InBounds(map))
                     continue;
                 ThermalProps tprops = null;
                 var nindex = map.cellIndices.CellToIndex(ncell);
                 var terrain = map.terrainGrid.TerrainAtIgnoreTemp(nindex);
                 if (tCache.TryGetThermals(terrain, out tprops)) {
-                    if (tprops.Freezable()) { // something melted nearby
+                    if (tprops.Freezable()) { // something melted nearby, nice
                         return terrain;
                     }
                     // a neighbour meltable into something is nice too
                     if (tprops.Meltable() && tprops.turnsInto != null) {
                         return terrain;
                     }
-                    if (!tprops.Meltable()) { // but at least we found some ground
+                    if (!tprops.Meltable()) {
+                        // but at least we found some ground
                         foundGround = true;
                     }
+                    // last case: something meltable, and turnsInto == null.
+                    // not good, let's look under it.
                 }
-                underTerrain = map.terrainGrid.UnderTerrainAt(nindex);
-                if (underTerrain == null) {
+                var underTerrain = map.terrainGrid.UnderTerrainAt(nindex);
+                if (underTerrain == null) { // alas.
                     continue;
                 }
+                // same routine as above
                 if (tCache.TryGetThermals(underTerrain, out tprops)) {
-                    if (tprops.Freezable()) { // something froze into something defined nearby
+                    if (tprops.Freezable()) {
                         return underTerrain;
                     }
-                    if (!tprops.Meltable()) { // but at least we found some ground
+                    if (tprops.Meltable() && tprops.turnsInto != null) {
+                        return terrain;
+                    }
+                    if (!tprops.Meltable()) {
                         foundGround = true;
                     }
                 }
@@ -537,7 +544,6 @@ namespace Celsius
             log.Info($"tdefs:  ice9={CelsiusIceNine} slade={CelsiusSlade}");
             if (map.Biome == BiomeDefOf.SeaIce || map.Biome == BiomeDefOf.IceSheet) {
                 if (!Settings.CompatForceIceConversion) {
-                    // TODO: make this a popup or something.
                     log.Error($"Map biome is {map.Biome}. Not converting ice to meltable (can be forced in mod options).");
                     return;
                 }
@@ -547,22 +553,29 @@ namespace Celsius
                 log.Error($"terrainFlops.Count = {terrainFlops.Count}, wtf? Aborting conversion.");
                 return; // means we got here by a huge mistake
             }
-            int cnt = 0;
-            int cnt_u = 0;
+
+            int count = 0;
+            int guesses = 0;
             for (int i = 0 ; i < map.cellIndices.NumGridCells; i++) {
                 // direct grid manipulation, since otherwise it's a ton
                 // of unnecessary and useless TerrainChanged events.
                 // esp. at this point, where game is not running yet.
                 var oldTerrain = map.terrainGrid.TerrainAtIgnoreTemp(i);
                 if (oldTerrain == TerrainDefOf.Ice) {
-                    terrainFlops[i] = BestUnderIceTerrain(i, cnt_u, out int cnew);
+                    var underTerrain = map.terrainGrid.UnderTerrainAt(i);
+                    if (underTerrain == null) {
+                        underTerrain = BestUnderIceTerrain(i);
+                        guesses += 1;
+                    }
+                    terrainFlops[i] = underTerrain;
+                    terrainTemperatures[i] = temperatures[i];
                     map.terrainGrid.topGrid[i] = CelsiusIceNine;
                     map.terrainGrid.underGrid[i] = null;
-                    cnt ++;
-                    cnt_u = cnew;
+                    count ++;
                 }
             }
-            log.Info($"{cnt} icy cells in {map.Biome} converted to meltable variant ({CelsiusIceNine}). {cnt_u} guesses.");
+            log.Info($"{count} Ice cells converted to meltable variant ({CelsiusIceNine}). {guesses} guesses.");
+            log.Spam($"terrainFlops now at {terrainFlops.Count}");
         }
 
         public override void ExposeData() {

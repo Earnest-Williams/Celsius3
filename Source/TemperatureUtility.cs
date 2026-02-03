@@ -34,12 +34,13 @@ namespace Celsius
                 return false;
             }
             if (!temperatureInfos.TryGetValue(map, out tinfo)) {
+                var log = new LogContext("TryGetTemprComp");
                 tinfo = map.GetComponent<TemperatureInfo>();
                 if (tinfo == null) { // Happens with Map Preview for example
-                    LC.Spam("TemperatureUtility.TryGetTemprComp", $"MapComponent null on set for a map {map}");
+                    log.Spam($"MapComponent null on set for a map {map}");
                     return false;
                 }
-                LC.Spam("TemperatureUtility.TryGetTemprComp", $"Caching tinfo lookup for {map}");
+                log.Spam($"First lookup for {map}");
                 temperatureInfos.Add(map, tinfo);
             }
             return true;
