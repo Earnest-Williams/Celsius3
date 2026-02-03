@@ -84,7 +84,7 @@ namespace Celsius
 
         public static float GetTemperatureForCell(this IntVec3 cell, Map map) {
             if (map.TryGetTemprComp(out TemperatureInfo tinfo)) {
-                tinfo.GetTemperatureForCell(cell);
+                return tinfo.GetTemperatureForCell(cell);
             }
             return map.mapTemperature.OutdoorTemp;
         }
