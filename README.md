@@ -14,12 +14,14 @@ As of now I hope I fixed all race conditions and data loss that were plaguing th
 Odyssey compatability is still lacking, in that the mod is not vacuum-aware.
 
 Odyssey-specific water freeze-melt should work in parallel with this mod's freeze-melt.
+Or you can just disable Celsius freeze-melt: the switch only affects vanilla water, terrains
+with explicit phase transforms in defs will continue to transform.
 
 All in all this is very much work in progress.
 
-I would not yet recommend using this update on important saves/playthroughs - while it should not eat your save
-(there is a button for this in mod settings). Save files are backwards incompatible, that is, 2.6 can't read 2.7
-stuff.
+I would not yet recommend using this update on important saves/playthroughs - it should not eat your save
+(there is a button for this in mod settings), but.. this is not a stable release yet.
+Save files are backwards incompatible, that is, 2.6 can't read 2.7 stuff.
 
 Please help with testing, bugreports and suggestions are very welcome.
 
