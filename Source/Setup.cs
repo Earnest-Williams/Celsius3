@@ -375,18 +375,23 @@ namespace Celsius
 
                 string text = cachedPrefix;
 
-                float Tc = tinfo.GetTemperatureForCell(index);
-
-                text += ", " + Tc.ToStringTemperature(Settings.TemperatureDisplayFormatString);
-
-                float Tt = tinfo.GetTerrainTemperature(index);
-                if (!float.IsNaN(Tt)) {
-                    text += " / " + "Celsius_Terrain".Translate() + ": "
-                         + Tt.ToStringTemperature(Settings.TemperatureDisplayFormatString);
+                if (tinfo.ZeroPressureAt(mCell)) {
+                        text = "Celsius_Vacuum".Translate();
                 } else {
-                    float Tw = map.mapTemperature.OutdoorTemp;
-                    text += " / " + "Celsius_Weather".Translate() + ": "
-                         + Tw.ToStringTemperature(Settings.TemperatureDisplayFormatString);
+                    float Tc = tinfo.GetTemperatureForCell(index);
+                    text = cachedPrefix + Tc.ToStringTemperature(Settings.TemperatureDisplayFormatString);
+                }
+
+                if (!tinfo.IsThereVacuum()) {
+                    float Tt = tinfo.GetTerrainTemperature(index);
+                    if (!float.IsNaN(Tt)) {
+                        text += " / " + "Celsius_Terrain".Translate() + ": "
+                            + Tt.ToStringTemperature(Settings.TemperatureDisplayFormatString);
+                    } else {
+                        float Tw = map.mapTemperature.OutdoorTemp;
+                        text += " / " + "Celsius_Weather".Translate() + ": "
+                            + Tw.ToStringTemperature(Settings.TemperatureDisplayFormatString);
+                    }
                 }
 
                 cachedAtIndex = index;

@@ -329,7 +329,7 @@ namespace Celsius
         // and have no way to know when a room vanishes with its
         // nonzero pressure.
         bool isThereVacuum = false;
-
+        public bool IsThereVacuum() => this.isThereVacuum;
 /* take 0 - sync render, buffer swap. slow-ish, eats memory, most probably isn't worth it.
         float[] readPressure;
         float[] writePressure;
@@ -359,11 +359,10 @@ namespace Celsius
             }
         }
         float PressureAt(int index) => PressureAt(map.cellIndices.IndexToCell(index));
+        public bool ZeroPressureAt(IntVec3 cell) => PressureAt(cell).AlmostZero();
 
         public void UpdateVacuum(Dictionary<IntVec3, float> vacuums) {
-            if (!this.isThereVacuum) { // first call here, allocate buffers
-                this.isThereVacuum = true;
-            }
+            this.isThereVacuum = true;
             vacuums = new Dictionary<IntVec3, float>(vacuums);
         }
 /* take 2 - dict copy, async render, buffer swap. diff wrt flops is that flops access is very infrequent */
@@ -852,7 +851,7 @@ namespace Celsius
 
             float temperature = GetTemperatureForCell(index);
             float pressure = 1.0f;
-            if (this.isThereVacuum) { pressure = PressureAt(index); }
+            if (this.isThereVacuum) { pressure = this.PressureAt(index); }
 
             // compressing green range and clamping the rest.
             //
@@ -1001,6 +1000,8 @@ namespace Celsius
             }
         }
 
+        // NOTE: PressureAt(index) vs PressureAt(cell) : for dicts use cell, for buffers - index
+        // if you have both. Currently it's cell.
         void MicropressureModel(int i, float modelStepFactor) {
             IntVec3 cell = map.cellIndices.IndexToCell(i);
             float pressure = PressureAt(cell);
