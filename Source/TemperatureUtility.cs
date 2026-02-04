@@ -140,6 +140,39 @@ namespace Celsius
 
         public static bool AlmostZero(this float az) { return Mathf.Abs(az) < float.Epsilon; }
 
+        public static void VacCalcHeatTransferCells(float interactingTemperature, ThermalProps props, float airflow,
+                                                      float modelStepFactor, float pressure, float interactingPressure,
+                                                      ref float energy, ref float heatFlow) {
+            // props is neigh cell.  interactingTemperature neigh temp
+            // aiflow is this cell airflow.
+            //
+            // interactingTemperature = temperatures[neighbourIndex],
+            // props = GetThermalPropertiesAt(neighbourIndex)
+            // airflow   =  localProps.airflow
+            //
+            float pressureFactor = pressure * interactingPressure; // gross simplification for now
+
+            // the below shortcut-for-air should disable heat transfer to full vacuum at least.
+
+            // Air has heat capacity = 1 and conductivity = 1
+            // this below obscurely shortcuts the case when both cells are air.
+            if (AlmostZero(airflow - 1.0f) && props.isAir)
+            {
+                heatFlow += /* 1.0f  * */ modelStepFactor * pressureFactor; // that magic 1.0 was here initially as heatFlow++
+                energy += interactingTemperature * modelStepFactor * pressureFactor;
+                return;
+            }
+
+            // If one of the interacting cells is not air, need to take airflow into account
+            float hf = airflow.AlmostZero() || props.airflow.AlmostZero()
+                ? props.HeatFlow
+                : props.HeatFlow * Mathf.Pow(Settings.ConvectionConductivityEffect, airflow * props.airflow * pressureFactor);
+            // * pressureFactor above makes sure airflow affects heatflow less with lower pressure
+
+            hf = hf * modelStepFactor;
+            heatFlow += hf;
+            energy += interactingTemperature * hf;
+        }
         public static void CalculateHeatTransferCells(float interactingTemperature, ThermalProps props, float airflow,
                                                       float modelStepFactor, ref float energy, ref float heatFlow)
         {

@@ -126,6 +126,9 @@ namespace Celsius
                     AccessTools.Method("Verse.Building:Destroy"),
                     prefix: new HarmonyMethod(type.GetMethod("Building_Destroy")));
 
+                harmony.Patch(
+                    AccessTools.Method("Verse.VacuumComponent:RegenerateVacuumOverlay"),
+                    postfix: new HarmonyMethod(type.GetMethod("VacuumComponent_RegenerateVacuumOverlay")));
 
                 MethodInfo method = AccessTools.Method("VanillaVehiclesExpanded.GarageDoor:SpawnGarage");
                 if (method != null)
@@ -510,6 +513,15 @@ namespace Celsius
                 TemperatureUtility.TryPushHeat(__instance.parent.Position,
                                                __instance.parent.Map,
                                                __instance.FireSize * Settings.RitualHeatPushPerFireSize);
+        }
+
+        // Eats vacuum
+        public static void VacuumComponent_RegenerateVacuumOverlay(VacuumComponent __instance) {
+            if (__instance.map.TryGetTemprComp(out TemperatureInfo tinfo)) {
+                //Dictionary<IntVec3, float> cells;
+                var cells = Traverse.Create(__instance).Field("vacuumedCells").GetValue<Dictionary<IntVec3, float>>();
+                tinfo.UpdateVacuum(cells);
+            }
         }
 
         // Vanilla Vehicles Expanded: When opening or closing a garage door, update its state and thermal values

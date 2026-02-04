@@ -313,6 +313,68 @@ namespace Celsius
             //if (false) { ApplyTerrainEffects(); }
         }
 
+#region Vacuum
+
+        // Vacuum support. values 0.0-1.0, 0.0 meaning "no vacuum".
+        // Universal threshold for effects on pawns is set to 0.5.
+        //
+        // We use inverted scale, values in the arrays are relative
+        // to atmospheric pressure,
+        // that is 0.0 = complete vacuum, 1.0 = 100KPa.
+        //
+        // This is because of need to clear buffers fast.
+        // Array.Clear() is most likely just memset(0), while .Fill idk.
+        //
+        // Besides, the model needs pressure, not "vacuum".
+        //
+        // The flag is set true by the harmony vacuum grabber,
+        // which will only be called if odyssey is enabled,
+        // and the map actually has some.
+        //
+        // We do double-buffering because we basically render rooms
+        // and have no way to know when a room vanishes with its
+        // nonzero pressure.
+        bool isThereVacuum = false;
+
+/* take 0 - sync render, buffer swap. slow-ish, eats memory, most probably isn't worth it.
+        float[] readPressure;
+        float[] writePressure;
+        float PressureAt(int index) => readPressure[index];
+
+        public void UpdateVacuum(Dictionary<IntVec3, float> vacuums) {
+            if (!this.isThereVacuum) { // first call here, allocate buffers
+                this.readPressure  = new float[this.map.cellIndices.NumGridCells];
+                this.writePressure = new float[this.map.cellIndices.NumGridCells];
+                this.isThereVacuum = true;
+            }
+            Array.Clear(this.writePressure, 0, this.writePressure.Length);
+            foreach(KeyValuePair<IntVec3, float> kv in vacuums) {
+                int index = this.map.cellIndices.CellToIndex(kv.Key);
+                this.writePressure[index] = 1.0f - kv.Value;
+            }
+            Gen.Swap(ref this.readPressure, ref this.writePressure); // now read one contains fresh data
+        }
+*/
+/* take 1 - dict copy, dict lookup. it's what we do with terrainFlops. */
+        Dictionary<IntVec3, float> vacuums = new  Dictionary<IntVec3, float>();
+        float PressureAt(IntVec3 cell) {
+            if (vacuums.ContainsKey(cell)) {
+                return 1.0f - vacuums[cell];
+            } else {
+                return 0.0f;
+            }
+        }
+        float PressureAt(int index) => PressureAt(map.cellIndices.IndexToCell(index));
+
+        public void UpdateVacuum(Dictionary<IntVec3, float> vacuums) {
+            if (!this.isThereVacuum) { // first call here, allocate buffers
+                this.isThereVacuum = true;
+            }
+            vacuums = new Dictionary<IntVec3, float>(vacuums);
+        }
+/* take 2 - dict copy, async render, buffer swap. diff wrt flops is that flops access is very infrequent */
+
+#endregion Vacuum
 #region CTBuffer
         void RepopulateCTProps() {
             LogContext log = new LogContext($"RepopulateCTProps({map})");
@@ -780,11 +842,13 @@ namespace Celsius
         public void ColorSettingsChanged() {
             overlayDrawer.SetDirty();
         }
-        Color TemperatureColorForCell(int index, float vacuum = 1.0f) {
+        Color TemperatureColorForCell(int index) {
             if (Settings.UseVanillaTemperatureColors)
                 return map.mapTemperature.GetCellExtraColor(index);
 
             float temperature = GetTemperatureForCell(index);
+            float pressure = 1.0f;
+            if (this.isThereVacuum) { pressure = PressureAt(index); }
 
             // compressing green range and clamping the rest.
             //
@@ -829,7 +893,7 @@ namespace Celsius
             } else { H = H_MaxMapped; }
 
             float S = Settings.T_Saturation;
-            float V = Mathf.Pow(vacuum, Settings.PressureExponent);
+            float V = Mathf.Pow(pressure, Settings.PressureExponent);
 
             // HSV -> RGB
             float C = V * S;
@@ -871,6 +935,10 @@ namespace Celsius
                                             .ToStringTemperature(Settings.TemperatureDisplayFormatString));
                 int tt_lines = 1;
 
+                if (this.isThereVacuum) {
+                    tooltip += $"\nPressure: {PressureAt(cell):F2}";
+                    tt_lines += 1;
+                }
                 if (Settings.DebugMode) {
                     tooltip += $"\n" + GetThermalPropertiesAt(index).ToString();
                     tooltip += "\n";
@@ -928,6 +996,133 @@ namespace Celsius
                 this.collectorDone = true;
             }
         }
+
+        void MicropressureModel(int i, float modelStepFactor) {
+            IntVec3 cell = map.cellIndices.IndexToCell(i);
+            float pressure = PressureAt(cell);
+            bool fullVacuum = TemperatureUtility.AlmostZero(pressure);
+            if (fullVacuum) {
+                // ignore zero-pressure cells until we get to modelling radiative transfer
+                return;
+            }
+
+            float temperature = this.temperatures[i];
+            ThermalProps cellProps = GetThermalPropertiesAt(i);
+
+            float heatFlow = cellProps.HeatFlow; // How quickly the system changes its temperature (capacity * conductivity)
+            float energy = temperature * heatFlow; // How much energy is added to the cell (temperature * capacity * conductivity)
+
+            // Diffusion & convection
+            void ProcessNeighbour(int neighbourIndex) =>
+                TemperatureUtility.VacCalcHeatTransferCells(this.temperatures[neighbourIndex],
+                    GetThermalPropertiesAt(neighbourIndex), cellProps.airflow, pressure, PressureAt(neighbourIndex),
+                        modelStepFactor, ref energy, ref heatFlow);
+
+            if (cell.z > 0)
+                ProcessNeighbour(i - map.Size.x);
+            if (cell.z < map.Size.z - 1)
+                ProcessNeighbour(i + map.Size.x);
+            if (cell.x > 0)
+                ProcessNeighbour(i - 1);
+            if (cell.x < map.Size.x - 1)
+                ProcessNeighbour(i + 1);
+
+            // Applying heat transfer
+            float equilibriumTemp = energy / heatFlow;
+            temperature += (equilibriumTemp - temperature) * cellProps.conductivity;
+
+            // Terrain heat push left out for now.
+
+            this.worksetTemperatures[i] = temperature;
+        }
+
+        void AtmosphericModel(int i, float outdoorTemperature, float modelStepFactor, int ticksSinceLastStart) {
+            IntVec3 cell = map.cellIndices.IndexToCell(i);
+            float temperature = this.temperatures[i];
+            ThermalProps cellProps = GetThermalPropertiesAt(i);
+
+            float heatFlow = cellProps.HeatFlow; // How quickly the system changes its temperature (capacity * conductivity)
+            float energy = temperature * heatFlow; // How much energy is added to the cell (temperature * capacity * conductivity)
+
+            // ignore Ody tempGrid : let it freeze/melt thinIce and remove floodWater by itself.
+            TerrainDef terrain = map.terrainGrid.TerrainAtIgnoreTemp(i);
+            ThermalProps terrainProps = null;
+            if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out terrainProps)) {
+                float terrainTemperature = this.terrainTemperatures[i];
+
+                TemperatureUtility.CalculateHeatTransferTerrain(terrainTemperature, terrainProps, modelStepFactor, ref energy, ref heatFlow);
+
+                float terrainTempChange = (temperature - terrainTemperature) * cellProps.HeatFlow / heatFlow;
+                terrainTemperature += terrainTempChange * terrainProps.conductivity;
+
+                // Make sure that terrains that push or pull heat are at least as hot or cold as the air in the cell
+                // (maybe will add a more accurate calculation later)
+
+                // in vanilla - only two terrains in Ody. maybe there are more in mods. but not in my set.
+                // no idea what "more accurate" can mean here.
+
+                if (terrain.heatPerTick > 0)
+                {
+                    if (terrainTemperature < temperature)
+                        terrainTemperature = temperature;
+                }
+                else if (terrain.heatPerTick < 0)
+                {
+                    if (terrainTemperature > temperature)
+                        terrainTemperature = temperature;
+                }
+                this.terrainTemperatures[i] = terrainTemperature;
+            }
+
+            // Diffusion & convection
+            void ProcessNeighbour(int neighbourIndex) =>
+                TemperatureUtility.CalculateHeatTransferCells(temperatures[neighbourIndex],
+                    GetThermalPropertiesAt(neighbourIndex), cellProps.airflow, modelStepFactor,
+                        ref energy, ref heatFlow);
+
+            if (cell.z > 0)
+                ProcessNeighbour(i - map.Size.x);
+            if (cell.z < map.Size.z - 1)
+                ProcessNeighbour(i + map.Size.x);
+            if (cell.x > 0)
+                ProcessNeighbour(i - 1);
+            if (cell.x < map.Size.x - 1)
+                ProcessNeighbour(i + 1);
+
+            // Thermal exchange with the environment
+            RoofDef roof = map.roofGrid.RoofAt(i);
+            TemperatureUtility.CalculateHeatTransferEnvironment(outdoorTemperature, cellProps, roof, modelStepFactor,
+                                                                ref energy, ref heatFlow);
+
+            // Applying heat transfer
+            float equilibriumTemp = energy / heatFlow;
+            temperature += (equilibriumTemp - temperature) * cellProps.conductivity;
+
+            // Terrain heat push (only when SteadyEnvironmentEffects.DoCellSteadyEffects hasn't done it yet)
+            // in vanilla there's only GenTemperature.PushHeat(c, this.map, terrain.heatPerTick * 1666.6666f)
+            // for terrain.heatPerTick > 0f && room !=  null && !(room != null && room.UsesOutdoorTemperature)
+            // so basically terrain heat push turns off for non-rooms, or rooms with !UsesOutdoorTemperature
+
+            // the below code mimics that for some reason and thus only has any effect for terrain.heatPerTick < 0
+            // of which I haven't seen any examples.
+
+            bool shouldPushHeat = terrain.heatPerTick > 0;
+
+            if (shouldPushHeat) {
+                Room room = cell.GetRoom(map);
+                if (room != null && !room.UsesOutdoorTemperature)
+                    shouldPushHeat = false;
+            } else {
+                shouldPushHeat = terrain.heatPerTick < 0;
+            }
+
+            if (shouldPushHeat) {
+                temperature += terrain.heatPerTick * ticksSinceLastStart * Settings.HeatPushEffect / cellProps.heatCapacity;
+            }
+
+            this.worksetTemperatures[i] = temperature;
+        }
+
         // Runs the diffusion model only. via a threadpool.
         void UpdateTemperatures() {
             var stopWatch = Stopwatch.StartNew();
@@ -947,93 +1142,19 @@ namespace Celsius
 
             // Main loop
             var partitioner = Partitioner.Create(0, temperatures.Length);
-            Parallel.ForEach(partitioner, range => {
-                for (int i = range.Item1; i < range.Item2; i++) {
-                    IntVec3 cell = map.cellIndices.IndexToCell(i);
-                    float temperature = temperatures[i];
-                    ThermalProps cellProps = GetThermalPropertiesAt(i);
-
-                    float heatFlow = cellProps.HeatFlow; // How quickly the system changes its temperature (capacity * conductivity)
-                    float energy = temperature * heatFlow; // How much energy is added to the cell (temperature * capacity * conductivity)
-
-                    // ignore Ody tempGrid : let it freeze/melt thinIce and remove floodWater by itself.
-                    TerrainDef terrain = map.terrainGrid.TerrainAtIgnoreTemp(i);
-                    ThermalProps terrainProps = null;
-                    if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out terrainProps)) {
-                        float terrainTemperature = terrainTemperatures[i];
-
-                        TemperatureUtility.CalculateHeatTransferTerrain(terrainTemperature, terrainProps, modelStepFactor, ref energy, ref heatFlow);
-
-                        float terrainTempChange = (temperature - terrainTemperature) * cellProps.HeatFlow / heatFlow;
-                        terrainTemperature += terrainTempChange * terrainProps.conductivity;
-
-                        // Make sure that terrains that push or pull heat are at least as hot or cold as the air in the cell
-                        // (maybe will add a more accurate calculation later)
-
-                        // in vanilla - only two terrains in Ody. maybe there are more in mods. but not in my set.
-                        // no idea what "more accurate" can mean here.
-
-                        if (terrain.heatPerTick > 0)
-                        {
-                            if (terrainTemperature < temperature)
-                                terrainTemperature = temperature;
-                        }
-                        else if (terrain.heatPerTick < 0)
-                        {
-                            if (terrainTemperature > temperature)
-                                terrainTemperature = temperature;
-                        }
-                        terrainTemperatures[i] = terrainTemperature;
+            if (this.isThereVacuum) {
+                Parallel.ForEach(partitioner, range => {
+                    for (int i = range.Item1; i < range.Item2; i++) {
+                        MicropressureModel(i, modelStepFactor);
                     }
-                    // Diffusion & convection
-                    void ProcessNeighbour(int neighbourIndex) =>
-                        TemperatureUtility.CalculateHeatTransferCells(temperatures[neighbourIndex],
-                            GetThermalPropertiesAt(neighbourIndex), cellProps.airflow, modelStepFactor,
-                                ref energy, ref heatFlow);
-
-                    if (cell.z > 0)
-                        ProcessNeighbour(i - map.Size.x);
-                    if (cell.z < map.Size.z - 1)
-                        ProcessNeighbour(i + map.Size.x);
-                    if (cell.x > 0)
-                        ProcessNeighbour(i - 1);
-                    if (cell.x < map.Size.x - 1)
-                        ProcessNeighbour(i + 1);
-
-                    // Thermal exchange with the environment
-                    RoofDef roof = map.roofGrid.RoofAt(i);
-                    TemperatureUtility.CalculateHeatTransferEnvironment(outdoorTemperature, cellProps, roof, modelStepFactor,
-                                                                        ref energy, ref heatFlow);
-
-                    // Applying heat transfer
-                    float equilibriumTemp = energy / heatFlow;
-                    temperature += (equilibriumTemp - temperature) * cellProps.conductivity;
-
-                    // Terrain heat push (only when SteadyEnvironmentEffects.DoCellSteadyEffects hasn't done it yet)
-                    // in vanilla there's only GenTemperature.PushHeat(c, this.map, terrain.heatPerTick * 1666.6666f)
-                    // for terrain.heatPerTick > 0f && room !=  null && !(room != null && room.UsesOutdoorTemperature)
-                    // so basically terrain heat push turns off for non-rooms, or rooms with !UsesOutdoorTemperature
-
-                    // the below code mimics that for some reason and thus only has any effect for terrain.heatPerTick < 0
-                    // of which I haven't seen any examples.
-
-                    bool shouldPushHeat = terrain.heatPerTick > 0;
-
-                    if (shouldPushHeat) {
-                        Room room = cell.GetRoom(map);
-                        if (room != null && !room.UsesOutdoorTemperature)
-                            shouldPushHeat = false;
-                    } else {
-                        shouldPushHeat = terrain.heatPerTick < 0;
+                });
+            } else {
+                Parallel.ForEach(partitioner, range => {
+                    for (int i = range.Item1; i < range.Item2; i++) {
+                        AtmosphericModel(i, outdoorTemperature, modelStepFactor, ticksSinceLastStart);
                     }
-
-                    if (shouldPushHeat) {
-                        temperature += terrain.heatPerTick * ticksSinceLastStart * Settings.HeatPushEffect / cellProps.heatCapacity;
-                    }
-
-                    worksetTemperatures[i] = temperature;
-                }
-            });
+                });
+            }
 
             stopWatch.Stop();
             this.modelMsecEma.update(stopWatch.ElapsedMilliseconds);
