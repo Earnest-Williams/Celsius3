@@ -215,13 +215,7 @@ namespace Celsius
 
             */
 
-
-            overlayDrawer = new CellBoolDrawer(
-                index => !map.fogGrid.IsFogged(index),
-                () => Color.white,
-                index => TemperatureColorForCell(index),
-                map.Size.x,
-                map.Size.z);
+            this.InitializeUI();
 
             collectorStartTick = GenTicks.TicksGame - 1; // so that for the first run
             modelStartTick = GenTicks.TicksGame - 1;     // ticksSinceLastRun is > 0.
@@ -839,9 +833,19 @@ namespace Celsius
             RepopulateCTProps();
         }
 #region UI
+        void InitializeUI() {
+            overlayDrawer = new CellBoolDrawer(
+                index => !map.fogGrid.IsFogged(index),
+                () => Color.white,
+                index => TemperatureColorForCell(index),
+                map.Size.x,
+                map.Size.z);
+        }
+
         public void ColorSettingsChanged() {
             overlayDrawer.SetDirty();
         }
+
         Color TemperatureColorForCell(int index) {
             if (Settings.UseVanillaTemperatureColors)
                 return map.mapTemperature.GetCellExtraColor(index);
