@@ -71,6 +71,7 @@
 	<Celsius_MapTempOverlay_Terrain>Terrain: {0}</Celsius_MapTempOverlay_Terrain>
 	<Celsius_Terrain>Terrain</Celsius_Terrain>
 	<Celsius_Weather>Weather</Celsius_Weather>
+	<Celsius_VacuumTemperature>No temperature</Celsius_VacuumTemperature>
 
 	<!-- Translator hints:
 	Since the thermodynamics system implemented in Celsius is a simplification

@@ -103,6 +103,8 @@ namespace Celsius
         // from "main" thread only. Key: cell index in the map.
         Dictionary<int, TerrainDef> terrainFlops = new Dictionary<int, TerrainDef>();
 
+        public bool TryGetFlopAt(int index, out TerrainDef flopDef) => this.terrainFlops.TryGetValue(index, out flopDef);
+
         public TerrainDef CelsiusIceNine = null;
         public TerrainDef CelsiusSlade = null;
 
@@ -351,14 +353,14 @@ namespace Celsius
 */
 /* take 1 - dict copy, dict lookup. it's what we do with terrainFlops. */
         Dictionary<IntVec3, float> vacuums = new  Dictionary<IntVec3, float>();
-        float PressureAt(IntVec3 cell) {
+        public float PressureAt(IntVec3 cell) {
             if (vacuums.ContainsKey(cell)) {
                 return 1.0f - vacuums[cell];
             } else {
                 return 0.0f;
             }
         }
-        float PressureAt(int index) => PressureAt(map.cellIndices.IndexToCell(index));
+        public float PressureAt(int index) => PressureAt(map.cellIndices.IndexToCell(index));
         public bool ZeroPressureAt(IntVec3 cell) => PressureAt(cell).AlmostZero();
 
         public void UpdateVacuum(Dictionary<IntVec3, float> vacuums) {
@@ -845,70 +847,11 @@ namespace Celsius
             overlayDrawer.SetDirty();
         }
 
-        Color TemperatureColorForCell(int index) {
-            if (Settings.UseVanillaTemperatureColors)
-                return map.mapTemperature.GetCellExtraColor(index);
-
-            float temperature = GetTemperatureForCell(index);
-            float pressure = 1.0f;
-            if (this.isThereVacuum) { pressure = this.PressureAt(index); }
-
-            // compressing green range and clamping the rest.
-            //
-            //  by default 21C is the optimum temp
-            //  15C range centered on it is "comfortable" range.
-            // "interesting" range is from about -15 to +55.
-            //  the rest might as well be drawn single color.
-            //
-            //  HSV has Hue green hue at about 90 to 150 degrees.
-            // red at 0 and blue at 240.
-            //
-            // temperature settings:
-            // MinMapped, MinComfort, MaxComfort, MaxMapped.
-            //    default  -20, +15, +25, +60
-            //
-            // those are mapped to  240, 150, 90 and 0 Hue resp.
-            //
-            // S and V are used for vacuum. transfer function
-            // is Pn^5. This puts pressures <0.7 (3km alt) at below
-            // 0.2 S*V.
-            // Pn is pressure normalized to 0-1 atm which is what
-            // the game seems to use.
-
-            // Range into which comfort zone is mapped
-            const float H_MinMapped  = 240.0f;
-            const float H_MinComfort = 150.0f;
-            const float H_MaxComfort =  90.0f;
-            const float H_MaxMapped  =   0.0f;
-
-            float Tn, H;
-
-            if      (temperature < Settings.T_MinMapped) { H = H_MinMapped; }
-              else if (temperature < Settings.T_MinComfort) {
-                Tn = (temperature - Settings.T_MinMapped) / (Settings.T_MinComfort - Settings.T_MinMapped);
-                H  = Mathf.Lerp(H_MinMapped, H_MinComfort, Tn);
-            } else if (temperature < Settings.T_MaxComfort) {
-                Tn = (temperature - Settings.T_MinComfort) / (Settings.T_MaxComfort - Settings.T_MinComfort);
-                H  = Mathf.Lerp(H_MinComfort, H_MaxComfort, Tn);
-            } else if (temperature < Settings.T_MaxMapped) {
-                Tn = (temperature - Settings.T_MaxComfort) / (Settings.T_MaxMapped - Settings.T_MaxComfort);
-                H  = Mathf.Lerp(H_MaxComfort, H_MaxMapped, Tn);
-            } else { H = H_MaxMapped; }
-
-            float S = Settings.T_Saturation;
-            float V = Mathf.Pow(pressure, Settings.PressureExponent);
-
-            // HSV -> RGB
-            float C = V * S;
-            float X = C * (1.0f - Mathf.Abs((H / 60.0f) % 2.0f - 1.0f));
-            float m = V - C;
-
-            if (H < 60.0f)       { return new Color(C + m, X + m,  0.0f); }
-            else if (H < 120.0f) { return new Color(X + m, C + m,  0.0f); }
-            else if (H < 180.0f) { return new Color( 0.0f, C + m, X + m); }
-            else if (H < 240.0f) { return new Color( 0.0f, X + m, C + m); }
-            else if (H < 300.0f) { return new Color(X + m,  0.0f, C + m); }
-            else                 { return new Color(C + m,  0.0f, X + m); }
+        public Color TemperatureColorForCell(int index) {
+            if (Settings.UseVanillaTemperatureColors) { return map.mapTemperature.GetCellExtraColor(index); }
+            float temperature = this.GetTemperatureForCell(index);
+            float pressure = this.IsThereVacuum() ? this.PressureAt(index) : 1.0f;
+            return TemperatureColorMap.Get(temperature, pressure);
         }
 
         public override void MapComponentUpdate()
@@ -919,57 +862,8 @@ namespace Celsius
             overlayDrawer.CellBoolDrawerUpdate();
         }
 
-        public override void MapComponentOnGUI()
-        {
-            if (Event.current.type == EventType.KeyDown && Event.current.keyCode == DefOf.Celsius_SwitchTemperatureMap.MainKey && Find.MainTabsRoot.OpenTab == null)
-            {
-                Find.PlaySettings.showTemperatureOverlay = !Find.PlaySettings.showTemperatureOverlay;
-                Event.current.Use();
-            }
-            if (!Find.PlaySettings.showTemperatureOverlay || !Settings.ShowTemperatureTooltip)
-                return;
-            var cell = UI.MouseCell();
-            int index = map.cellIndices.CellToIndex(cell);
-            if (cell.InBounds(map) && (!map.fogGrid.IsFogged(index) || Prefs.DevMode)) {
-                GameFont font = Text.Font;
-                Text.Font = GameFont.Tiny;
-
-                string tooltip = "Celsius_MapTempOverlay_Cell".Translate(GetTemperatureForCell(index)
-                                            .ToStringTemperature(Settings.TemperatureDisplayFormatString));
-                int tt_lines = 1;
-
-                if (this.isThereVacuum) {
-                    tooltip += $"\nPressure: {PressureAt(cell):F2}";
-                    tt_lines += 1;
-                }
-                if (Settings.DebugMode) {
-                    tooltip += $"\n" + GetThermalPropertiesAt(index).ToString();
-                    tooltip += "\n";
-                    tt_lines += 6;
-                }
-                float terrainTemperature = terrainTemperatures[index];
-                if (!float.IsNaN(terrainTemperature)) {
-                    TerrainDef terrain = map.terrainGrid.TerrainAtIgnoreTemp(index);
-                    tooltip += $"\n{terrain.defName}: {terrainTemperature.ToStringTemperature(Settings.TemperatureDisplayFormatString)}";
-                    tt_lines += 1;
-                    if (Settings.DebugMode) {
-                        if (terrainFlops.ContainsKey(index)) {
-                            tooltip += $"\nflopTo: {terrainFlops[index].defName}";
-                            tt_lines += 1;
-                        }
-                        if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out ThermalProps terrainProps)) {
-                            tooltip += $"\n" + terrainProps.ToString();
-                            tt_lines += 7;
-                        }
-                    }
-                }
-                const int TinyFontLabelHeight = 16; // carefully measured.
-                const int TinyFontLabelFudge  =  8; // also.
-                int tooltip_h = tt_lines * TinyFontLabelHeight + TinyFontLabelFudge;
-                tooltip = tooltip.Replace("; ", "\n"); // props' ToStrings have conveniently placed semicolons
-                Widgets.Label(new Rect(UI.MousePositionOnUIInverted.x + 20, UI.MousePositionOnUIInverted.y + 20, 256, tooltip_h), tooltip);
-                Text.Font = font;
-            }
+        public override void MapComponentOnGUI() {
+            MapTooltip.Draw(this);
         }
 #endregion UI
 #region ModelAndTick
