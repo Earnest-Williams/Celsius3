@@ -90,9 +90,9 @@ namespace Msgpack {
         }
 
         ushort StreamReadUShort() {
-            Span<byte> buf = stackalloc byte[4];
+            Span<byte> buf = stackalloc byte[2];
             int i = ms.Read(buf);
-            if (i != 4) { throw new MsgpackException($"Short read by {4-i} byte(s)"); };
+            if (i != 2) { throw new MsgpackException($"Short read by {2-i} byte(s)"); };
             return BinaryPrimitives.ReadUInt16BigEndian(buf);
         }
 
