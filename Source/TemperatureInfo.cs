@@ -902,12 +902,15 @@ namespace Celsius
 
         // NOTE: PressureAt(index) vs PressureAt(cell) : for dicts use cell, for buffers - index
         // if you have both. Currently it's cell.
+        // SpaceTemperature is hardcoded like that in map generators.
+        const float SpaceTemperature = -75f;
         void MicropressureModel(int i, float modelStepFactor) {
             IntVec3 cell = map.cellIndices.IndexToCell(i);
             float pressure = PressureAt(cell);
             bool fullVacuum = TemperatureUtility.AlmostZero(pressure);
             if (fullVacuum) {
                 // ignore zero-pressure cells until we get to modelling radiative transfer
+                this.worksetTemperatures[i] = SpaceTemperature;
                 return;
             }
 
