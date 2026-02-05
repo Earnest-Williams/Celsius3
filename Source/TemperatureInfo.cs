@@ -429,7 +429,7 @@ namespace Celsius
                         var ct = building.TryGetComp<CompThermal>();
                         tprops = ct.tstate.IsOpen() ? tpair.open : tpair.closed;
                     } else {
-                        log.Spam($"no tprops for {building}");
+                        //log.Spam($"no tprops for {building}");
                         return;
                     }
                 } else {
@@ -471,7 +471,7 @@ namespace Celsius
             if (!initialized) { return; }
             var i = map.cellIndices.CellToIndex(cell);
             TerrainDef terrain = map.terrainGrid.TerrainAtIgnoreTemp(i);
-            LC.Spam("Notify_TerrainChanged", $"at={cell} to={terrain}");
+            //LC.Spam("Notify_TerrainChanged", $"at={cell} to={terrain}");
             if (TemperatureUtility.thermalsCache.TryGetThermals(terrain, out ThermalProps unused)) {
                 terrainTemperatures[i] = temperatures[i];
             } else {
