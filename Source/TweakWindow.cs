@@ -204,13 +204,16 @@ namespace Celsius
                 var crt  = tinfo.collectorRunTickEma.ema;
                 var cpt  = tinfo.collectorPeriodTickEma.ema;
                 var mst = tinfo.modelStepEma.ema;
+                var vms = tinfo.vacuumMsecEma.ema;
 
                 content.Label($"Model run {mms:F1} ms / {mrt:F1} ticks; period {mpt:F1} stepFactor {mst:F3}");
                 content.Label($"Collector run {cms:F1} ms / {crt:F1} ticks; period {cpt:F1} ticks.");
+                if (tinfo.IsThereVacuum()) { content.Label($"Vacuum update {vms:F1} ms"); }
                 TemperatureUtility.thermalsCache.Counts(out int things, out int terrains, out int terrFlam, out int whitelist);
                 content.Label($"Interesting number: {TemperatureUtility.threadIdChanges}");
                 content.Label($"Caches: ThermalProps {things} defWhitelist {whitelist}");
                 content.Label($"TerrainDefs {terrains} Terrain flammability {terrFlam}");
+                content.Label($"vacUpdates {tinfo.vacUpdates} vacCount {tinfo.vacCount} min {tinfo.vacMin:F2} max {tinfo.vacMax:F2} ");
                 content.Gap();
                 content.Label($"Model is being run too frequently if model run time in ticks");
                 content.Label($"approaches its period. Or, the same thing, actual period lags");

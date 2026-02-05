@@ -199,6 +199,11 @@ namespace Celsius {
                 if (tinfo.IsThereVacuum()) {
                     tooltip += $"\nPressure: {tinfo.PressureAt(cell):F2}";
                     tt_lines += 1;
+                    var room = cell.GetRoomOrAdjacent(tinfo.map);
+                    if (room != null) {
+                        tooltip += $"\nRoomVacuum: {room.Vacuum:F2}";
+                        tt_lines += 1;
+                    }
                 }
                 if (Settings.DebugMode) {
                     tooltip += $"\n" + tinfo.GetThermalPropertiesAt(index).ToString();

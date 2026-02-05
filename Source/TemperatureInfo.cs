@@ -135,6 +135,7 @@ namespace Celsius
                 log.Error("called on initialized object, continuing anyway.");
             }
 
+            this.isThereVacuum = ModsConfig.OdysseyActive && this.map.Biome.inVacuum;
             // Not the best time for this but idk at what point
             // they end up accessible. But must be no later than here.
             CelsiusIceNine = TerrainDef.Named("IceNine");
@@ -192,7 +193,8 @@ namespace Celsius
                 ConvertIceToIceNine();
                 iceConversionRequested = false;
             }
-
+            // pull pressure data from rooms
+            InitializeVacuum();
             // do this after the above because ApplyTerrainEffects() also trigger TerrainChanged.
 
             // T'remains to be seen how bad is this performance-wise.
@@ -266,6 +268,7 @@ namespace Celsius
 
         // mapJustGenerated to be true for new maps
         // or else all room cells get 0C
+        // except gravship. duh.
         void InitializeTemperatures(bool mapJustGenerated) {
             var log = new LogContext($"InitializeTemperatures({map})");
             log.Spam($"mapJustGenerated = {mapJustGenerated}");
@@ -275,20 +278,23 @@ namespace Celsius
             float outdoorTemperature = map.mapTemperature.OutdoorTemp;
             float seasonalTemperature = map.mapTemperature.SeasonalTemp;
 
+            float rmaxt = float.MinValue;
             for (int i = 0; i < NumGridCells; i++) {
                 IntVec3 cell = map.cellIndices.IndexToCell(i);
                 Room room = cell.GetRoomOrAdjacent(map);
-                if (room != null && !mapJustGenerated) {
+                if (room != null && (!mapJustGenerated || this.IsThereVacuum())) {
                     temperatures[i] = roomTemperatures[room.ID] = room.Temperature;
+                    if (temperatures[i] > rmaxt) rmaxt = temperatures[i];
                 } else {
                     RoofDef roof = map.roofGrid.RoofAt(i);
                     temperatures[i] = roof != null && roof.isThickRoof ? seasonalTemperature : outdoorTemperature;
                 }
             }
+            log.Spam($"room max temperature {rmaxt:F2}");
 
             float snowDepth = GetAverageSnowDepth(map);
             if (snowDepth > 0) {
-                log.Info($"Covering frozen terrain with average snow level of {snowDepth:F4}.");
+                log.Spam($"Covering frozen terrain with average snow level of {snowDepth:F4}.");
             } else {
                 snowDepth = float.NaN; // not covering.
             }
@@ -304,11 +310,11 @@ namespace Celsius
                     terrainTemperatures[i] = float.NaN;
                 }
             }
-            log.Info($"{cellsWithTerrainTemperature}/{NumGridCells} cells track terrain temperature.");
+            log.Spam($"{cellsWithTerrainTemperature}/{NumGridCells} cells track terrain temperature.");
 
             CollectTerrainEffects(snowDepth); // melt/freeze. add snow, melt it for one tick.
 
-            log.Info($"{terrainFlops.Count} terrain flops, {snowsMelted.Count} snowmelts and {firesStarted.Count} autoignitions.");
+            log.Spam($"{terrainFlops.Count} terrain flops, {snowsMelted.Count} snowmelts and {firesStarted.Count} autoignitions.");
 
             // delayed  until the first tick since melts can destroy stuff and who knows
             // what state is that stuff in at this moment.
@@ -357,11 +363,16 @@ namespace Celsius
             Gen.Swap(ref this.readPressure, ref this.writePressure); // now read one contains fresh data
         }
 */
-/* take 1 - dict copy, dict lookup. it's what we do with terrainFlops. */
+/* take 1 - dict fill, dict lookup. it's what we do with terrainFlops. update event from Harmony hook. */
         Dictionary<IntVec3, float> vacuums = new  Dictionary<IntVec3, float>();
+        public int vacUpdates = 0;
+        public int vacCount = 0;
+        public float vacMax, vacMin;
+        public EMA vacuumMsecEma = new EMA(3, 1.0f);
+
         public float PressureAt(IntVec3 cell) {
-            if (vacuums.ContainsKey(cell)) {
-                return 1.0f - vacuums[cell];
+            if (this.vacuums.ContainsKey(cell)) {
+                return 1.0f - this.vacuums[cell];
             } else {
                 return 0.0f;
             }
@@ -369,10 +380,36 @@ namespace Celsius
         public float PressureAt(int index) => PressureAt(map.cellIndices.IndexToCell(index));
         public bool ZeroPressureAt(IntVec3 cell) => PressureAt(cell).AlmostZero();
 
-        public void UpdateVacuum(Dictionary<IntVec3, float> vacuums) {
-            this.isThereVacuum = true;
-            vacuums = new Dictionary<IntVec3, float>(vacuums);
+        void InitializeVacuum() {
+            UpdateVacuum();
         }
+        public void UpdateVacuum() {
+            if (!this.isThereVacuum) { return; }
+            var stopWatch = Stopwatch.StartNew();
+            var newvac = new Dictionary<IntVec3, float>();
+            foreach (Room room in this.map.regionGrid.AllRooms) {
+                if (room.ExposedToSpace) { continue; }
+                float vacuum = room.Vacuum;
+                foreach (IntVec3 cell in room.Cells) {
+                    if (!newvac.TryAdd(cell, vacuum)) {
+                        if (newvac[cell] < vacuum) { newvac[cell] = vacuum; }
+                    }
+                }
+            }
+            this.vacuums = newvac;
+            this.vacUpdates += 1;
+            this.vacCount = this.vacuums.Count;
+
+            this.vacMax = float.MinValue;
+            this.vacMin = float.MaxValue;
+            foreach (var kv in this.vacuums) {
+                var vac = kv.Value;
+                if (vac > this.vacMax)  this.vacMax = vac;
+                if (vac < this.vacMin)  this.vacMin = vac;
+            }
+            stopWatch.Stop();
+            this.vacuumMsecEma.update(stopWatch.ElapsedMilliseconds);
+         }
 /* take 2 - dict copy, async render, buffer swap. diff wrt flops is that flops access is very infrequent */
 
 #endregion Vacuum
@@ -420,7 +457,7 @@ namespace Celsius
             if (!initialized) { return; }
             if (building == null ) { return; }
 
-            var log = new LogContext("UpdateCTProps");
+            var log = new LogContext("UpdateCTProps", enabled: false);
 
             ThermalProps tprops = null;
             if (!remove) {
@@ -429,7 +466,6 @@ namespace Celsius
                         var ct = building.TryGetComp<CompThermal>();
                         tprops = ct.tstate.IsOpen() ? tpair.open : tpair.closed;
                     } else {
-                        //log.Spam($"no tprops for {building}");
                         return;
                     }
                 } else {
@@ -737,7 +773,6 @@ namespace Celsius
                 log.Error("buildingTemps array missing. All temperature data will be reset.");
                 return;
             }
-
             DataExposeUtility.LookByteArray(ref buffer, "terrainTemps");
             if (buffer != null) {
                 var ms = new MemoryStream(buffer);
@@ -747,7 +782,6 @@ namespace Celsius
                 log.Error("terrainTemps array missing. All temperature data will be reset.");
                 return;
             }
-
             // it's fine if it's missing, means no water on map like.
             DataExposeUtility.LookByteArray(ref buffer, "terrainFlops");
             if (buffer != null) {
@@ -1374,8 +1408,21 @@ namespace Celsius
 
         int modelRuns = 0;
         int collectRuns = 0;
+        float rmaxt = float.MinValue;
         public override void MapComponentTick() {
             var log = new LogContext("MapComponentTick");
+
+            if (rmaxt < -10000.0f) {
+                for (int i = 0; i < map.cellIndices.NumGridCells; i++) {
+                    IntVec3 cell = map.cellIndices.IndexToCell(i);
+                    Room room = cell.GetRoomOrAdjacent(map);
+                    if (room != null) {
+                        if (temperatures[i] > rmaxt) rmaxt = temperatures[i];
+                    }
+                }
+                log.Spam($"room max temperature {rmaxt:F2}");
+            }
+
             var stopWatch = Stopwatch.StartNew();
             int thisTick = GenTicks.TicksGame;
             int ticksSinceLastModelStart = thisTick - this.modelStartTick;

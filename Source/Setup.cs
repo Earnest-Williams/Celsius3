@@ -156,7 +156,7 @@ namespace Celsius
             var patches = Harmony.GetPatchInfo(original);
             if (patches is null) return;
             foreach (var patch in patches.Postfixes) {
-                log.Spam($"owner: {patch.owner}");
+                log.Spam($"UnpatchInsulation: owner: {patch.owner}");
                 if (patch.owner == "com.Pelador.Rimworld.Insulation") {
                     harmony.UnpatchAll("com.Pelador.Rimworld.Insulation");
                     log.Spam("removed Insulation Harmony patches.");
@@ -408,9 +408,7 @@ namespace Celsius
         // Eats vacuum
         public static void VacuumComponent_RegenerateVacuumOverlay(VacuumComponent __instance) {
             if (__instance.map.TryGetTemprComp(out TemperatureInfo tinfo)) {
-                //Dictionary<IntVec3, float> cells;
-                var cells = Traverse.Create(__instance).Field("vacuumedCells").GetValue<Dictionary<IntVec3, float>>();
-                tinfo.UpdateVacuum(cells);
+                tinfo.UpdateVacuum();
             }
         }
 
