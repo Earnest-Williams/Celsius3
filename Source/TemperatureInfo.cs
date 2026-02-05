@@ -229,7 +229,7 @@ namespace Celsius
             stopWatch.Stop();
             log.Info($"done in {stopWatch.ElapsedMilliseconds} ms.");
             initialized = true;
-            minidump("/tmp/drw.msgpack");
+            //minidump("/tmp/drw.msgpack");
         }
 
         // TODO: I'm not sure what this is supposed to return.
