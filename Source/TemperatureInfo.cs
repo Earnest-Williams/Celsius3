@@ -173,6 +173,12 @@ namespace Celsius
                             break;
                         }
                     }
+                    if (methodInfo.DeclaringType == typeof(Verse.Game)) {
+                        if (methodInfo.Name == "LoadGame") {
+                            generated = false;
+                            break;
+                        }
+                    }
                     if (-1 != methodInfo.Name.IndexOf("Verse.MapGenerator.GenerateMap")) {
                         generated = true;
                         break;
