@@ -51,6 +51,16 @@ Please help with testing, bugreports and suggestions are very welcome.
  - Model needs splitting into gas and solid simulations.
 
 
+# Notes
+
+ - A variant of mod settings ui has been added to main tab as a button.
+ - Hotkey for calling it up while in map view is Keypad-Minus.
+ - Ice Nine is the meltable variant of vanilla ice. It is what vanilla water freezes into and melts from.
+   Vanilla ice does not melt. This way in icy terrains the mod does not touch vanilla ice at all.
+   Vanilla water variety that got frozen into I9 is recorded, so that it can melt properly. All of this happens
+   separate from Odyssey's freeze/melt mechanics. If you encounter problems with that, just turn off freeze/melt
+   in mod settings. This switch will not affect non-vanilla terrains.
+
 This project is hosted at [https://codeberg.org/lxnt/Celsius3](https://codeberg.org/lxnt/Celsius3)
 
 This project is not yet uploaded to Steam.
