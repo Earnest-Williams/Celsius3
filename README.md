@@ -1,6 +1,6 @@
 # Celsius 2.7
 
-This is a bugfix release for Rimworld mod Celsius based on Jul 10 2025 2.6 release
+This is a bugfix release for Rimworld mod Celsius based on Jul 10 2025 2.6 release.
 
 Original repo: [https://github.com/GarwelGarwel/Celsius](https://github.com/GarwelGarwel/Celsius)
 
@@ -40,11 +40,15 @@ Please help with testing, bugreports and suggestions are very welcome.
  - Map temperature layers stored compressed in the savegame.
  - Odyssey freezing, floods should work correctly. That one is mostly untested though.
 
-## To be done
+## In progress
 
- - Make vacuum not accept any heat
- - And hide that -75C nonsense
- - Testing, testing, testing.
+ - v3 model.
+
+## Known problems
+
+ - Heaters can't heat up a -75C room however small.
+ - Gravship doesn't keep internal temperature in flight.
+ - Model needs splitting into gas and solid simulations.
 
 
 This project is hosted at [https://codeberg.org/lxnt/Celsius3](https://codeberg.org/lxnt/Celsius3)
@@ -54,4 +58,6 @@ This project is not yet uploaded to Steam.
 This project intergates Anomaly and Odyssey TerrainDef patches from
 [Celsius Patches](https://steamcommunity.com/sharedfiles/filedetails/?id=3072081544) mod by
 [albinogod](https://steamcommunity.com/profiles/76561198078199193). Many thanks.
+
+A fork of the above mod for use with this version is available [here](https://codeberg.org/lxnt/CelsiusPatches).
 
