@@ -66,6 +66,7 @@ namespace Celsius
 
             content.Gap();
 
+#region colors
             //content.Label("Celsius_Settings_Colors".Translate());
 
             b = UseVanillaTemperatureColors;
@@ -123,7 +124,7 @@ namespace Celsius
                     }
                 }
             }
-
+#endregion colors
             content.Gap();
 
             content.Label("Celsius_Settings_UpdateInterval".Translate(TicksPerUpdate), tooltip: "Celsius_Settings_UpdateInterval_tooltip".Translate(TicksPerUpdate_Default));
@@ -146,8 +147,8 @@ namespace Celsius
             content.Label("Celsius_Settings_RoofInsulation".Translate(RoofInsulation), tooltip: "Celsius_Settings_RoofInsulation_tooltip".Translate(RoofInsulation_Default));
             RoofInsulation = content.Slider(RoofInsulation, 0, 20).RoundWithPrecision(0.5f);
 
-            content.Label("Celsius_Settings_HeatPush".Translate(HeatPushMultiplier.ToStringPercent()), tooltip: "Celsius_Settings_HeatPush_tooltip".Translate());
-            HeatPushMultiplier = content.Slider(HeatPushMultiplier, 0, 2).RoundWithPrecision(0.1f);
+            content.Label("Celsius_Settings_HeatPush".Translate($"{HeatPushMultiplier:F1}"), tooltip: "Celsius_Settings_HeatPush_tooltip".Translate());
+            HeatPushMultiplier = content.Slider(HeatPushMultiplier, 0, 32).RoundWithPrecision(0.1f);
             HeatPushEffect = HeatPushEffect_Base * HeatPushMultiplier;
 
             if (mainTabMode) {
