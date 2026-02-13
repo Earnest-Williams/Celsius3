@@ -243,6 +243,10 @@ namespace Msgpack {
             ms.Write(utf8);
         }
 
+        public void WriteNil() {
+            ms.WriteByte(0xc0);
+        }
+
         public void WriteBool(bool v) {
             if (!v) { ms.WriteByte(0xc2); } else { ms.WriteByte(0xc3); }
         }
@@ -284,7 +288,9 @@ namespace Msgpack {
             ms.Write(BitConverter.GetBytes(t));
         }
 
-        void WriteArrayHeader(int length) {
+        public void WriteFloat(float v) => WriteSingle(v);
+
+        public void WriteArrayHeader(int length) {
             if (length < 16) {
                 ms.WriteByte(Convert.ToByte(0x90 | length));
             } else if (length < 65535) {
@@ -310,7 +316,7 @@ namespace Msgpack {
             }
         }
 
-        void WriteMapHeader(int count) {
+        public void WriteMapHeader(int count) {
             if (count < 16) {
                 ms.WriteByte(Convert.ToByte(0x80 | count));
             } else if (count < 65535) {
