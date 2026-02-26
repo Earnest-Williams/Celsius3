@@ -16,8 +16,13 @@ namespace Celsius
 
         internal static void Init() => air = new ThermalProps(1, 1, 1, true);
 
+        // copied from defs for the statworkers
+        public readonly float stuffInsulationFactor;
+        public readonly float volumetricHeatCapacity;
+        public readonly float volume;
+
         public readonly float heatCapacity;
-        public readonly float insulation;  // Effective insulation (taking into cosideration airflow)
+        public readonly float insulation;  // Effective insulation (taking into consideration airflow)
         public readonly float airflow;
         public readonly bool isAir;
 
@@ -32,6 +37,9 @@ namespace Celsius
 
         public ThermalProps(float heatCapacity, float insulation, float airflow, bool isAir)
         {
+            this.stuffInsulationFactor = float.NaN;
+            this.volumetricHeatCapacity = float.NaN;
+            this.volume = float.NaN;
             this.heatCapacity = heatCapacity;
             this.insulation = Mathf.Lerp(insulation, 1, airflow);
             this.airflow = airflow;
@@ -51,8 +59,11 @@ namespace Celsius
             float aflow = open ? ttp.airflowWhenOpen : ttp.airflow;
             float heatcap = ttp.heatCapacity;
             float insul = ttp.insulation;
+            this.volume = ttp.volume;
 
             if (stp != null) {
+                this.volumetricHeatCapacity = stp.volumetricHeatCapacity;
+                this.stuffInsulationFactor = stp.insulationFactor;
                 heatcap = Mathf.Lerp(1, stp.volumetricHeatCapacity, ttp.volume);
                 insul = ttp.insulation * stp.insulationFactor;
             }

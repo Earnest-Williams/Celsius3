@@ -10,6 +10,12 @@ namespace Celsius
         {
             if (req.HasThing) {
                 if (TemperatureUtility.thermalsCache.TryGetThermals(req.Thing, out ThermalPair tpair)) {
+                    CompThermal compThermal = req.Thing.TryGetComp<CompThermal>();
+                    if (compThermal != null) {
+                        if (compThermal.tstate.IsOpen()) {
+                            return tpair.open.heatCapacity;
+                        }
+                    }
                     return tpair.closed.heatCapacity;
                 }
             } else {
@@ -20,44 +26,43 @@ namespace Celsius
             return 0;
         }
 
-        public override string GetExplanationUnfinalized(StatRequest req, ToStringNumberSense numberSense)
-        {
-            ThingThermalProperties thingThermalProperties = null;
-            StuffThermalProperties stuffThermalProperties = null;
-            ThermalPair tpair = new ThermalPair();
-            bool isOpen = false;
-            string label = null;
-            string stuffLabel = "stuffLabel placeholder";
+        void BuildExplanationUnfinalized(StatRequest req, ToStringNumberSense numberSense,
+                                                    ThermalProps thermalProps, StringBuilder expl) {
+            if (thermalProps == null) {
+                return;
+            }
+            string defLabel = req.Def.label;
+            string stuffLabel = req.StuffDef?.label;
 
-            if (req.HasThing)
-            {
-                label = req.Thing.Label;
-                //stuffLabel = ;
-                CompThermal compThermal = req.Thing.TryGetComp<CompThermal>();
-                if (compThermal != null) {
-                    isOpen = compThermal.tstate.IsOpen();
-                    TemperatureUtility.thermalsCache.TryGetThermals(req.Thing, out tpair);
+            if (stuffLabel != null) {
+                if (float.IsNaN(thermalProps.volumetricHeatCapacity)) {
+                    expl.AppendInNewLine("Celsius_Stat_HeatCapacity_StuffVolumetricHeatCapacity".Translate(stuffLabel, thermalProps.volumetricHeatCapacity).CapitalizeFirst());
                 }
-            } else if (req.Def != null) {
-                label = req.Def.label;
-                TemperatureUtility.thermalsCache.TryGetThermals(req.Def, req.StuffDef, out tpair);
-                thingThermalProperties = req.Def.GetModExtension<ThingThermalProperties>();
-                stuffLabel = req.StuffDef?.label;
-                stuffThermalProperties = req.StuffDef?.GetModExtension<StuffThermalProperties>();
             }
 
-            var thermalProps = isOpen ? tpair.open : tpair.closed; // nullpair will result in null either way
-            if (thermalProps == null)
-                return base.GetExplanationUnfinalized(req, numberSense);
+            expl.AppendInNewLine("Celsius_Stat_HeatCapacity_Volume".Translate(defLabel, thermalProps.volume.ToString("F3")).CapitalizeFirst());
+            expl.AppendInNewLine("Celsius_Stat_HeatCapacity_AirHeatCapacity".Translate((1 - thermalProps.volume).ToStringByStyle(stat.toStringStyle, numberSense)));
+        }
 
-            StringBuilder explanation = new StringBuilder("Celsius_Stat_HeatCapacity_StuffVolumetricHeatCapacity"
-                .Translate(stuffLabel ?? "stuff", stuffThermalProperties.volumetricHeatCapacity)
-                .CapitalizeFirst());
-            explanation.AppendInNewLine("Celsius_Stat_HeatCapacity_Volume".Translate(label, thingThermalProperties.volume.ToString("F3")).CapitalizeFirst());
-            explanation.AppendInNewLine("Celsius_Stat_HeatCapacity_AirHeatCapacity".Translate((1 - thingThermalProperties.volume).ToStringByStyle(stat.toStringStyle, numberSense)));
-            explanation.AppendInNewLine(base.GetExplanationUnfinalized(req, numberSense));
+        public override string GetExplanationUnfinalized(StatRequest req, ToStringNumberSense numberSense)
+        {
+            string baseExpl = base.GetExplanationUnfinalized(req, numberSense);
+            if (req.Def == null) {
+                return baseExpl;
+            }
+            if (!TemperatureUtility.thermalsCache.TryGetThermals(req.Def, req.StuffDef, out ThermalPair tpair)) {
+                return baseExpl;
+            }
 
-            return explanation.ToString();
+            StringBuilder expl = new StringBuilder();
+
+            BuildExplanationUnfinalized(req, numberSense, tpair.closed, expl);
+            if (tpair.open != null) {
+                expl.AppendInNewLine("Celsius_Stat_Open_State".Translate());
+                BuildExplanationUnfinalized(req, numberSense, tpair.open, expl);
+            }
+            expl.AppendInNewLine(baseExpl);
+            return expl.ToString();
         }
     }
 }

@@ -91,7 +91,7 @@
 	<Celsius_Stat_Insulation_StuffInsulation>{0} insulation: </Celsius_Stat_Insulation_StuffInsulation>
 	<Celsius_Stat_Insulation_AirflowOpen>The {0} is open.</Celsius_Stat_Insulation_AirflowOpen>
 	<Celsius_Stat_Insulation_Airflow>Airflow: {0}</Celsius_Stat_Insulation_Airflow>
-
+	<Celsius_Stat_Open_State>in open state:</Celsius_Stat_Open_State>
 	<Celsius_StatPart_Wetness_Explanation>Wet: {0}</Celsius_StatPart_Wetness_Explanation>
 	<Celsius_StatPart_WindSpeed_Explanation>Wind {0}: {1}</Celsius_StatPart_WindSpeed_Explanation>
 	<Celsius_StatPart_DirectSunlight_Explanation>Direct sunlight: {0}</Celsius_StatPart_DirectSunlight_Explanation>
